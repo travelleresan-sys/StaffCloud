@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}従業員情報編集 - 従業員管理システム{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-header">
+                <h3 class="card-title mb-0">
+                    <i class="bi bi-pencil-square me-2"></i>従業員情報編集
+                </h3>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">氏名</label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ employee.name }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="birth_date" class="form-label">生年月日</label>
+                            <input type="date" class="form-control" id="birth_date" name="birth_date" 
+                                   value="{{ employee.birth_date.strftime('%Y-%m-%d') if employee.birth_date else '' }}">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="gender" class="form-label">性別</label>
+                            <select class="form-select" id="gender" name="gender">
+                                <option value="">選択してください</option>
+                                <option value="男性" {% if employee.gender == '男性' %}selected{% endif %}>男性</option>
+                                <option value="女性" {% if employee.gender == '女性' %}selected{% endif %}>女性</option>
+                                <option value="その他" {% if employee.gender == 'その他' %}selected{% endif %}>その他</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="join_date" class="form-label">入社年月日</label>
+                            <input type="date" class="form-control" id="join_date" name="join_date" value="{{ employee.join_date.strftime('%Y-%m-%d') }}" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="phone_number" class="form-label">電話番号</label>
+                            <input type="tel" class="form-control" id="phone_number" name="phone_number" 
+                                   value="{{ employee.phone_number or '' }}" placeholder="例: 090-1234-5678">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="status" class="form-label">在籍状況</label>
+                            <select class="form-select" id="status" name="status" required>
+                                <option value="在籍中" {% if employee.status == '在籍中' %}selected{% endif %}>在籍中</option>
+                                <option value="退職済" {% if employee.status == '退職済' %}selected{% endif %}>退職済</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="nationality" class="form-label">国籍</label>
+                            <select class="form-select" id="nationality" name="nationality">
+                                <option value="" {% if not employee.nationality %}selected{% endif %}>選択してください</option>
+                                <optgroup label="アジア・オセアニア">
+                                    <option value="日本" {% if employee.nationality == '日本' %}selected{% endif %}>日本</option>
+                                    <option value="中国" {% if employee.nationality == '中国' %}selected{% endif %}>中国</option>
+                                    <option value="韓国" {% if employee.nationality == '韓国' %}selected{% endif %}>韓国</option>
+                                    <option value="モンゴル" {% if employee.nationality == 'モンゴル' %}selected{% endif %}>モンゴル</option>
+                                    <option value="ベトナム" {% if employee.nationality == 'ベトナム' %}selected{% endif %}>ベトナム</option>
+                                    <option value="ネパール" {% if employee.nationality == 'ネパール' %}selected{% endif %}>ネパール</option>
+                                    <option value="フィリピン" {% if employee.nationality == 'フィリピン' %}selected{% endif %}>フィリピン</option>
+                                    <option value="インド" {% if employee.nationality == 'インド' %}selected{% endif %}>インド</option>
+                                    <option value="インドネシア" {% if employee.nationality == 'インドネシア' %}selected{% endif %}>インドネシア</option>
+                                    <option value="ミャンマー" {% if employee.nationality == 'ミャンマー' %}selected{% endif %}>ミャンマー</option>
+                                    <option value="カンボジア" {% if employee.nationality == 'カンボジア' %}selected{% endif %}>カンボジア</option>
+                                    <option value="ラオス" {% if employee.nationality == 'ラオス' %}selected{% endif %}>ラオス</option>
+                                    <option value="タイ" {% if employee.nationality == 'タイ' %}selected{% endif %}>タイ</option>
+                                    <option value="マレーシア" {% if employee.nationality == 'マレーシア' %}selected{% endif %}>マレーシア</option>
+                                    <option value="シンガポール" {% if employee.nationality == 'シンガポール' %}selected{% endif %}>シンガポール</option>
+                                    <option value="バングラデシュ" {% if employee.nationality == 'バングラデシュ' %}selected{% endif %}>バングラデシュ</option>
+                                    <option value="スリランカ" {% if employee.nationality == 'スリランカ' %}selected{% endif %}>スリランカ</option>
+                                    <option value="パキスタン" {% if employee.nationality == 'パキスタン' %}selected{% endif %}>パキスタン</option>
+                                    <option value="ウズベキスタン" {% if employee.nationality == 'ウズベキスタン' %}selected{% endif %}>ウズベキスタン</option>
+                                    <option value="カザフスタン" {% if employee.nationality == 'カザフスタン' %}selected{% endif %}>カザフスタン</option>
+                                    <option value="キルギス" {% if employee.nationality == 'キルギス' %}selected{% endif %}>キルギス</option>
+                                    <option value="タジキスタン" {% if employee.nationality == 'タジキスタン' %}selected{% endif %}>タジキスタン</option>
+                                    <option value="トルクメニスタン" {% if employee.nationality == 'トルクメニスタン' %}selected{% endif %}>トルクメニスタン</option>
+                                    <option value="アフガニスタン" {% if employee.nationality == 'アフガニスタン' %}selected{% endif %}>アフガニスタン</option>
+                                    <option value="オーストラリア" {% if employee.nationality == 'オーストラリア' %}selected{% endif %}>オーストラリア</option>
+                                    <option value="ニュージーランド" {% if employee.nationality == 'ニュージーランド' %}selected{% endif %}>ニュージーランド</option>
+                                </optgroup>
+                                <optgroup label="中東・アフリカ">
+                                    <option value="イラン" {% if employee.nationality == 'イラン' %}selected{% endif %}>イラン</option>
+                                    <option value="イラク" {% if employee.nationality == 'イラク' %}selected{% endif %}>イラク</option>
+                                    <option value="サウジアラビア" {% if employee.nationality == 'サウジアラビア' %}selected{% endif %}>サウジアラビア</option>
+                                    <option value="UAE" {% if employee.nationality == 'UAE' %}selected{% endif %}>UAE</option>
+                                    <option value="クウェート" {% if employee.nationality == 'クウェート' %}selected{% endif %}>クウェート</option>
+                                    <option value="カタール" {% if employee.nationality == 'カタール' %}selected{% endif %}>カタール</option>
+                                    <option value="オマーン" {% if employee.nationality == 'オマーン' %}selected{% endif %}>オマーン</option>
+                                    <option value="バーレーン" {% if employee.nationality == 'バーレーン' %}selected{% endif %}>バーレーン</option>
+                                    <option value="ヨルダン" {% if employee.nationality == 'ヨルダン' %}selected{% endif %}>ヨルダン</option>
+                                    <option value="レバノン" {% if employee.nationality == 'レバノン' %}selected{% endif %}>レバノン</option>
+                                    <option value="シリア" {% if employee.nationality == 'シリア' %}selected{% endif %}>シリア</option>
+                                    <option value="イスラエル" {% if employee.nationality == 'イスラエル' %}selected{% endif %}>イスラエル</option>
+                                    <option value="トルコ" {% if employee.nationality == 'トルコ' %}selected{% endif %}>トルコ</option>
+                                    <option value="エジプト" {% if employee.nationality == 'エジプト' %}selected{% endif %}>エジプト</option>
+                                    <option value="モロッコ" {% if employee.nationality == 'モロッコ' %}selected{% endif %}>モロッコ</option>
+                                    <option value="チュニジア" {% if employee.nationality == 'チュニジア' %}selected{% endif %}>チュニジア</option>
+                                    <option value="アルジェリア" {% if employee.nationality == 'アルジェリア' %}selected{% endif %}>アルジェリア</option>
+                                    <option value="リビア" {% if employee.nationality == 'リビア' %}selected{% endif %}>リビア</option>
+                                    <option value="スーダン" {% if employee.nationality == 'スーダン' %}selected{% endif %}>スーダン</option>
+                                    <option value="エチオピア" {% if employee.nationality == 'エチオピア' %}selected{% endif %}>エチオピア</option>
+                                    <option value="ケニア" {% if employee.nationality == 'ケニア' %}selected{% endif %}>ケニア</option>
+                                    <option value="ナイジェリア" {% if employee.nationality == 'ナイジェリア' %}selected{% endif %}>ナイジェリア</option>
+                                    <option value="ガーナ" {% if employee.nationality == 'ガーナ' %}selected{% endif %}>ガーナ</option>
+                                    <option value="セネガル" {% if employee.nationality == 'セネガル' %}selected{% endif %}>セネガル</option>
+                                    <option value="コートジボワール" {% if employee.nationality == 'コートジボワール' %}selected{% endif %}>コートジボワール</option>
+                                    <option value="カメルーン" {% if employee.nationality == 'カメルーン' %}selected{% endif %}>カメルーン</option>
+                                    <option value="コンゴ民主共和国" {% if employee.nationality == 'コンゴ民主共和国' %}selected{% endif %}>コンゴ民主共和国</option>
+                                    <option value="南アフリカ" {% if employee.nationality == '南アフリカ' %}selected{% endif %}>南アフリカ</option>
+                                </optgroup>
+                                <optgroup label="北米・中南米">
+                                    <option value="米国" {% if employee.nationality == '米国' %}selected{% endif %}>米国</option>
+                                    <option value="カナダ" {% if employee.nationality == 'カナダ' %}selected{% endif %}>カナダ</option>
+                                    <option value="メキシコ" {% if employee.nationality == 'メキシコ' %}selected{% endif %}>メキシコ</option>
+                                    <option value="ブラジル" {% if employee.nationality == 'ブラジル' %}selected{% endif %}>ブラジル</option>
+                                    <option value="アルゼンチン" {% if employee.nationality == 'アルゼンチン' %}selected{% endif %}>アルゼンチン</option>
+                                    <option value="チリ" {% if employee.nationality == 'チリ' %}selected{% endif %}>チリ</option>
+                                    <option value="ペルー" {% if employee.nationality == 'ペルー' %}selected{% endif %}>ペルー</option>
+                                    <option value="コロンビア" {% if employee.nationality == 'コロンビア' %}selected{% endif %}>コロンビア</option>
+                                    <option value="ベネズエラ" {% if employee.nationality == 'ベネズエラ' %}selected{% endif %}>ベネズエラ</option>
+                                    <option value="エクアドル" {% if employee.nationality == 'エクアドル' %}selected{% endif %}>エクアドル</option>
+                                    <option value="ボリビア" {% if employee.nationality == 'ボリビア' %}selected{% endif %}>ボリビア</option>
+                                    <option value="パラグアイ" {% if employee.nationality == 'パラグアイ' %}selected{% endif %}>パラグアイ</option>
+                                    <option value="ウルグアイ" {% if employee.nationality == 'ウルグアイ' %}selected{% endif %}>ウルグアイ</option>
+                                </optgroup>
+                                <optgroup label="ヨーロッパ">
+                                    <option value="イギリス" {% if employee.nationality == 'イギリス' %}selected{% endif %}>イギリス</option>
+                                    <option value="フランス" {% if employee.nationality == 'フランス' %}selected{% endif %}>フランス</option>
+                                    <option value="ドイツ" {% if employee.nationality == 'ドイツ' %}selected{% endif %}>ドイツ</option>
+                                    <option value="イタリア" {% if employee.nationality == 'イタリア' %}selected{% endif %}>イタリア</option>
+                                    <option value="スペイン" {% if employee.nationality == 'スペイン' %}selected{% endif %}>スペイン</option>
+                                    <option value="ポルトガル" {% if employee.nationality == 'ポルトガル' %}selected{% endif %}>ポルトガル</option>
+                                    <option value="オランダ" {% if employee.nationality == 'オランダ' %}selected{% endif %}>オランダ</option>
+                                    <option value="ベルギー" {% if employee.nationality == 'ベルギー' %}selected{% endif %}>ベルギー</option>
+                                    <option value="スイス" {% if employee.nationality == 'スイス' %}selected{% endif %}>スイス</option>
+                                    <option value="オーストリア" {% if employee.nationality == 'オーストリア' %}selected{% endif %}>オーストリア</option>
+                                    <option value="スウェーデン" {% if employee.nationality == 'スウェーデン' %}selected{% endif %}>スウェーデン</option>
+                                    <option value="ノルウェー" {% if employee.nationality == 'ノルウェー' %}selected{% endif %}>ノルウェー</option>
+                                    <option value="デンマーク" {% if employee.nationality == 'デンマーク' %}selected{% endif %}>デンマーク</option>
+                                    <option value="フィンランド" {% if employee.nationality == 'フィンランド' %}selected{% endif %}>フィンランド</option>
+                                    <option value="ポーランド" {% if employee.nationality == 'ポーランド' %}selected{% endif %}>ポーランド</option>
+                                    <option value="チェコ" {% if employee.nationality == 'チェコ' %}selected{% endif %}>チェコ</option>
+                                    <option value="スロバキア" {% if employee.nationality == 'スロバキア' %}selected{% endif %}>スロバキア</option>
+                                    <option value="ハンガリー" {% if employee.nationality == 'ハンガリー' %}selected{% endif %}>ハンガリー</option>
+                                    <option value="ルーマニア" {% if employee.nationality == 'ルーマニア' %}selected{% endif %}>ルーマニア</option>
+                                    <option value="ブルガリア" {% if employee.nationality == 'ブルガリア' %}selected{% endif %}>ブルガリア</option>
+                                    <option value="クロアチア" {% if employee.nationality == 'クロアチア' %}selected{% endif %}>クロアチア</option>
+                                    <option value="スロベニア" {% if employee.nationality == 'スロベニア' %}selected{% endif %}>スロベニア</option>
+                                    <option value="セルビア" {% if employee.nationality == 'セルビア' %}selected{% endif %}>セルビア</option>
+                                    <option value="ボスニア・ヘルツェゴビナ" {% if employee.nationality == 'ボスニア・ヘルツェゴビナ' %}selected{% endif %}>ボスニア・ヘルツェゴビナ</option>
+                                    <option value="モンテネグロ" {% if employee.nationality == 'モンテネグロ' %}selected{% endif %}>モンテネグロ</option>
+                                    <option value="北マケドニア" {% if employee.nationality == '北マケドニア' %}selected{% endif %}>北マケドニア</option>
+                                    <option value="アルバニア" {% if employee.nationality == 'アルバニア' %}selected{% endif %}>アルバニア</option>
+                                    <option value="ギリシャ" {% if employee.nationality == 'ギリシャ' %}selected{% endif %}>ギリシャ</option>
+                                    <option value="ウクライナ" {% if employee.nationality == 'ウクライナ' %}selected{% endif %}>ウクライナ</option>
+                                    <option value="ベラルーシ" {% if employee.nationality == 'ベラルーシ' %}selected{% endif %}>ベラルーシ</option>
+                                    <option value="リトアニア" {% if employee.nationality == 'リトアニア' %}selected{% endif %}>リトアニア</option>
+                                    <option value="ラトビア" {% if employee.nationality == 'ラトビア' %}selected{% endif %}>ラトビア</option>
+                                    <option value="エストニア" {% if employee.nationality == 'エストニア' %}selected{% endif %}>エストニア</option>
+                                    <option value="ロシア" {% if employee.nationality == 'ロシア' %}selected{% endif %}>ロシア</option>
+                                    <option value="ジョージア" {% if employee.nationality == 'ジョージア' %}selected{% endif %}>ジョージア</option>
+                                    <option value="アルメニア" {% if employee.nationality == 'アルメニア' %}selected{% endif %}>アルメニア</option>
+                                    <option value="アゼルバイジャン" {% if employee.nationality == 'アゼルバイジャン' %}selected{% endif %}>アゼルバイジャン</option>
+                                </optgroup>
+                                <option value="その他" {% if employee.nationality == 'その他' %}selected{% endif %}>その他</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="residence_card_expiry" class="form-label">在留カード期限</label>
+                            <input type="date" class="form-control" id="residence_card_expiry" name="residence_card_expiry" 
+                                   value="{{ employee.residence_card_expiry.strftime('%Y-%m-%d') if employee.residence_card_expiry else '' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="car_insurance_expiry" class="form-label">自動車保険満了日</label>
+                            <input type="date" class="form-control" id="car_insurance_expiry" name="car_insurance_expiry" 
+                                   value="{{ employee.car_insurance_expiry.strftime('%Y-%m-%d') if employee.car_insurance_expiry else '' }}">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="photo" class="form-label">顔写真</label>
+                            {% if employee.photo_filename %}
+                                <div class="mb-2">
+                                    <img src="{{ url_for('static', filename='uploads/' + employee.photo_filename) }}" 
+                                         alt="現在の写真" 
+                                         class="img-thumbnail" 
+                                         style="width: 100px; height: 100px; object-fit: cover;">
+                                    <p class="form-text">現在の写真</p>
+                                </div>
+                            {% endif %}
+                            <div class="input-group">
+                                <input type="file" class="form-control" id="photo" name="photo" accept="image/*" onchange="previewImage(this, 'photo-preview')">
+                                <button type="button" class="btn btn-outline-secondary" onclick="clearPhotoPreview('photo', 'photo-preview')">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">新しい写真を選択すると、現在の写真が置き換えられます</div>
+                            <!-- サムネイル表示エリア -->
+                            <div id="photo-preview" class="mt-2" style="display: none;">
+                                <img id="photo-preview-img" src="" alt="プレビュー" 
+                                     class="img-thumbnail" 
+                                     style="width: 100px; height: 100px; object-fit: cover;">
+                                <p class="form-text mt-1">アップロード予定の画像</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <label for="address" class="form-label">住所</label>
+                            <textarea class="form-control" id="address" name="address" rows="3" placeholder="例: 東京都渋谷区...">{{ employee.address or '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>キャンセル
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>更新
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
