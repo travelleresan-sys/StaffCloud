@@ -1,0 +1,15 @@
+# 機密情報ファイルの除外
+.env
+config.json
+*.key
+*.pem
+*.crt
+*.sqlite
+
+# Python関連
+__pycache__/
+*.pyc
+instance/employees.db
+
+# 仮想環境
+venv/
