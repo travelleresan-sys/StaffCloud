@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block title %}人事評価管理 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0">
+                <i class="bi bi-graph-up me-2"></i>人事評価管理
+            </h1>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>ダッシュボードに戻る
+                </a>
+                <a href="{{ url_for('add_evaluation') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-1"></i>新規評価作成
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 評価期間フィルター -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="period" class="form-label">評価期間</label>
+                        <select class="form-select" id="period" name="period">
+                            <option value="">全期間</option>
+                            <option value="2025年上期" {{ 'selected' if request.args.get('period') == '2025年上期' else '' }}>2025年上期</option>
+                            <option value="2024年下期" {{ 'selected' if request.args.get('period') == '2024年下期' else '' }}>2024年下期</option>
+                            <option value="2024年上期" {{ 'selected' if request.args.get('period') == '2024年上期' else '' }}>2024年上期</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="department" class="form-label">部署</label>
+                        <select class="form-select" id="department" name="department">
+                            <option value="">全部署</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept }}" {{ 'selected' if request.args.get('department') == dept else '' }}>{{ dept }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-outline-primary me-2">
+                            <i class="bi bi-search me-1"></i>フィルター
+                        </button>
+                        <a href="{{ url_for('performance_evaluation') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-clockwise me-1"></i>リセット
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title mb-0">
+                    <i class="bi bi-clipboard-data me-2"></i>評価一覧
+                </h2>
+            </div>
+            <div class="card-body">
+                {% if evaluations %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">スタッフ名</th>
+                                <th scope="col">部署</th>
+                                <th scope="col">役職</th>
+                                <th scope="col">評価期間</th>
+                                <th scope="col">総合評価</th>
+                                <th scope="col">業績</th>
+                                <th scope="col">行動</th>
+                                <th scope="col">潜在能力</th>
+                                <th scope="col">ステータス</th>
+                                <th scope="col">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for evaluation in evaluations %}
+                            <tr>
+                                <td>
+                                    <strong>{{ evaluation.employee.name }}</strong>
+                                </td>
+                                <td>{{ evaluation.employee.department or '-' }}</td>
+                                <td>{{ evaluation.employee.position or '-' }}</td>
+                                <td>{{ evaluation.evaluation_period }}</td>
+                                <td>
+                                    {% if evaluation.overall_rating %}
+                                        <span class="badge 
+                                        {% if evaluation.overall_rating >= 4.0 %}bg-success
+                                        {% elif evaluation.overall_rating >= 3.0 %}bg-primary
+                                        {% elif evaluation.overall_rating >= 2.0 %}bg-warning
+                                        {% else %}bg-danger{% endif %}">
+                                            {{ "%.1f"|format(evaluation.overall_rating) }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">未評価</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ "%.1f"|format(evaluation.performance_score) if evaluation.performance_score else '-' }}</td>
+                                <td>{{ "%.1f"|format(evaluation.behavior_score) if evaluation.behavior_score else '-' }}</td>
+                                <td>{{ "%.1f"|format(evaluation.potential_score) if evaluation.potential_score else '-' }}</td>
+                                <td>
+                                    {% if evaluation.status == 'draft' %}
+                                        <span class="badge bg-secondary">下書き</span>
+                                    {% elif evaluation.status == 'submitted' %}
+                                        <span class="badge bg-warning">提出済み</span>
+                                    {% elif evaluation.status == 'hr_approved' %}
+                                        <span class="badge bg-info">人事承認済み</span>
+                                    {% elif evaluation.status == 'approved' %}
+                                        <span class="badge bg-success">最終承認済み</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group-vertical btn-group-sm" role="group">
+                                        <!-- 基本操作 -->
+                                        <div class="btn-group btn-group-sm mb-1" role="group">
+                                            <a href="{{ url_for('view_evaluation', evaluation_id=evaluation.id) }}" 
+                                               class="btn btn-outline-info">
+                                                <i class="bi bi-eye me-1"></i>詳細
+                                            </a>
+                                            {% if evaluation.status in ['draft', 'submitted'] %}
+                                            <a href="{{ url_for('edit_evaluation', evaluation_id=evaluation.id) }}" 
+                                               class="btn btn-outline-primary">
+                                                <i class="bi bi-pencil me-1"></i>編集
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <!-- 承認操作 -->
+                                        {% if evaluation.status == 'submitted' and current_user.can_hr_approve %}
+                                        <div class="btn-group btn-group-sm mb-1" role="group">
+                                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ evaluation.id }}">
+                                                <i class="bi bi-check-circle me-1"></i>人事承認
+                                            </button>
+                                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ evaluation.id }}">
+                                                <i class="bi bi-x-circle me-1"></i>差し戻し
+                                            </button>
+                                        </div>
+                                        {% elif evaluation.status == 'hr_approved' and current_user.can_director_approve %}
+                                        <div class="btn-group btn-group-sm mb-1" role="group">
+                                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#directorApproveModal{{ evaluation.id }}">
+                                                <i class="bi bi-check-circle me-1"></i>取締役承認
+                                            </button>
+                                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ evaluation.id }}">
+                                                <i class="bi bi-x-circle me-1"></i>差し戻し
+                                            </button>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <!-- 削除操作 -->
+                                        {% if evaluation.status not in ['approved'] %}
+                                        <form method="POST" action="{{ url_for('delete_evaluation', evaluation_id=evaluation.id) }}" 
+                                              style="display: inline;" 
+                                              onsubmit="return confirm('本当にこの評価を削除しますか？')">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                <i class="bi bi-trash me-1"></i>削除
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-clipboard-x display-1 text-muted"></i>
+                    <p class="lead text-muted mt-3">評価データがありません。</p>
+                    <a href="{{ url_for('add_evaluation') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-1"></i>最初の評価を作成
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 統計サマリー -->
+{% if evaluations %}
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">総評価数</h5>
+                <h2 class="text-primary">{{ evaluations|length }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">平均評価</h5>
+                <h2 class="text-success">{{ "%.1f"|format(avg_rating) if avg_rating else '-' }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">承認済み</h5>
+                <h2 class="text-info">{{ approved_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">下書き</h5>
+                <h2 class="text-warning">{{ draft_count }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 承認・差し戻しモーダル -->
+{% for evaluation in evaluations %}
+<!-- 人事承認モーダル -->
+{% if evaluation.status == 'submitted' and current_user.can_hr_approve %}
+<div class="modal fade" id="approveModal{{ evaluation.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">人事承認</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('hr_approve_evaluation', evaluation_id=evaluation.id) }}">
+                <div class="modal-body">
+                    <p><strong>{{ evaluation.employee.name }}</strong> の評価を人事承認しますか？</p>
+                    <div class="mb-3">
+                        <label for="approval_comment{{ evaluation.id }}" class="form-label">承認コメント（任意）</label>
+                        <textarea class="form-control" id="approval_comment{{ evaluation.id }}" name="approval_comment" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="submit" class="btn btn-success">人事承認</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 取締役承認モーダル -->
+{% if evaluation.status == 'hr_approved' and current_user.can_director_approve %}
+<div class="modal fade" id="directorApproveModal{{ evaluation.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">取締役承認</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('director_approve_evaluation', evaluation_id=evaluation.id) }}">
+                <div class="modal-body">
+                    <p><strong>{{ evaluation.employee.name }}</strong> の評価を最終承認しますか？</p>
+                    <div class="mb-3">
+                        <label for="director_approval_comment{{ evaluation.id }}" class="form-label">承認コメント（任意）</label>
+                        <textarea class="form-control" id="director_approval_comment{{ evaluation.id }}" name="approval_comment" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="submit" class="btn btn-success">最終承認</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 差し戻しモーダル -->
+{% if evaluation.status in ['submitted', 'hr_approved'] and (current_user.can_hr_approve or current_user.can_director_approve) %}
+<div class="modal fade" id="rejectModal{{ evaluation.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">評価差し戻し</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('reject_evaluation', evaluation_id=evaluation.id) }}">
+                <div class="modal-body">
+                    <p><strong>{{ evaluation.employee.name }}</strong> の評価を差し戻しますか？</p>
+                    <div class="mb-3">
+                        <label for="rejection_comment{{ evaluation.id }}" class="form-label">差し戻し理由 <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="rejection_comment{{ evaluation.id }}" name="rejection_comment" rows="3" required placeholder="差し戻し理由を入力してください"></textarea>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        差し戻しにより評価は下書き状態に戻り、承認情報はリセットされます。
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="submit" class="btn btn-danger">差し戻し</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+{% endblock %}

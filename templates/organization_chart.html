@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block title %}組織図 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0">
+                <i class="bi bi-diagram-3 me-2"></i>組織図
+            </h1>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>ダッシュボードに戻る
+                </a>
+                <button onclick="exportChart('png')" class="btn btn-outline-primary">
+                    <i class="bi bi-image me-1"></i>PNG出力
+                </button>
+                <button onclick="exportChart('pdf')" class="btn btn-outline-danger">
+                    <i class="bi bi-file-pdf me-1"></i>PDF出力
+                </button>
+                <button onclick="printChart()" class="btn btn-outline-info">
+                    <i class="bi bi-printer me-1"></i>印刷
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 組織図表示エリア -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-people me-2"></i>組織構成
+                    <small class="text-muted ms-2">（{{ employees|length }}名）</small>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="organization-chart" class="org-chart-container">
+                    <!-- 組織図がここに動的生成される -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 組織統計 -->
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">部署別統計</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>部署</th>
+                                <th class="text-end">人数</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dept, count in dept_stats.items() %}
+                            <tr>
+                                <td>{{ dept or '未設定' }}</td>
+                                <td class="text-end">{{ count }}名</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">役職別統計</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>役職</th>
+                                <th class="text-end">人数</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pos, count in position_stats.items() %}
+                            <tr>
+                                <td>{{ pos or '未設定' }}</td>
+                                <td class="text-end">{{ count }}名</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">雇用形態別統計</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>雇用形態</th>
+                                <th class="text-end">人数</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hire_type, count in hire_type_stats.items() %}
+                            <tr>
+                                <td>{{ hire_type or '未設定' }}</td>
+                                <td class="text-end">{{ count }}名</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.org-chart-container {
+    min-height: 500px;
+    overflow: auto;
+    border: 1px solid #e9ecef;
+    border-radius: 0.375rem;
+    background: #f8f9fa;
+    padding: 20px;
+}
+
+.org-node {
+    background: white;
+    border: 2px solid #007bff;
+    border-radius: 8px;
+    padding: 10px;
+    margin: 5px;
+    text-align: center;
+    min-width: 150px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+    display: inline-block;
+}
+
+.org-node.manager {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    border-color: #0056b3;
+}
+
+.org-node .name {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.org-node .position {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.org-node.manager .position {
+    color: #ffffff;
+    opacity: 0.9;
+}
+
+.org-node .department {
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+.org-node.manager .department {
+    color: #ffffff;
+    opacity: 0.8;
+}
+
+.org-level {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin: 20px 0;
+}
+
+.org-connection {
+    width: 2px;
+    height: 20px;
+    background: #6c757d;
+    margin: 0 auto;
+}
+
+.org-horizontal-line {
+    height: 2px;
+    background: #6c757d;
+    margin: 10px 0;
+}
+
+@media print {
+    .btn-group {
+        display: none !important;
+    }
+    .org-chart-container {
+        border: none;
+        background: white;
+    }
+}
+</style>
+
+<script>
+// 組織図データをJSで受け取る
+const orgData = {{ org_data|safe }};
+
+function buildOrgChart() {
+    const container = document.getElementById('organization-chart');
+    
+    if (!orgData || orgData.length === 0) {
+        container.innerHTML = '<div class="text-center py-5"><p class="text-muted">組織データがありません</p></div>';
+        return;
+    }
+    
+    // 組織階層を構築
+    const hierarchy = buildHierarchy(orgData);
+    
+    // HTMLを生成
+    container.innerHTML = renderHierarchy(hierarchy);
+}
+
+function buildHierarchy(employees) {
+    const empMap = {};
+    const roots = [];
+    
+    // 従業員マップを作成
+    employees.forEach(emp => {
+        empMap[emp.id] = { ...emp, children: [] };
+    });
+    
+    // 階層関係を構築
+    employees.forEach(emp => {
+        if (emp.manager_id && empMap[emp.manager_id]) {
+            empMap[emp.manager_id].children.push(empMap[emp.id]);
+        } else {
+            roots.push(empMap[emp.id]);
+        }
+    });
+    
+    return roots;
+}
+
+function renderHierarchy(nodes, level = 0) {
+    if (!nodes || nodes.length === 0) return '';
+    
+    let html = `<div class="org-level level-${level}">`;
+    
+    nodes.forEach(node => {
+        const isManager = node.children && node.children.length > 0;
+        html += `
+            <div class="org-branch">
+                <div class="org-node ${isManager ? 'manager' : ''}">
+                    <div class="name">${node.name}</div>
+                    <div class="position">${node.position || ''}</div>
+                    <div class="department">${node.department || ''}</div>
+                </div>
+                ${node.children && node.children.length > 0 ? 
+                    `<div class="org-connection"></div>
+                     ${renderHierarchy(node.children, level + 1)}` : ''}
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    return html;
+}
+
+function exportChart(format) {
+    // 組織図の出力機能（簡易版）
+    if (format === 'png') {
+        // PNG出力（html2canvasライブラリが必要）
+        alert('PNG出力機能は開発中です');
+    } else if (format === 'pdf') {
+        // PDF出力
+        window.open(`{{ url_for('organization_chart_pdf') }}`, '_blank');
+    }
+}
+
+function printChart() {
+    window.print();
+}
+
+// ページ読み込み時に組織図を構築
+document.addEventListener('DOMContentLoaded', function() {
+    buildOrgChart();
+});
+</script>
+{% endblock %}

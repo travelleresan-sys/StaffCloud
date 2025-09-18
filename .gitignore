@@ -1,10 +1,11 @@
-# 機密情報ファイルの除外
+# 機密情報
 .env
 config.json
 *.key
 *.pem
 *.crt
 *.sqlite
+*.pdf
 
 # Python関連
 __pycache__/

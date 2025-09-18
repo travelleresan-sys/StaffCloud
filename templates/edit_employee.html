@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}従業員情報編集 - 従業員管理システム{% endblock %}
+{% block title %}スタッフ情報編集 - StaffCloud{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -211,7 +211,162 @@
                                 <p class="form-text mt-1">アップロード予定の画像</p>
                             </div>
                         </div>
-                        <div class="col-md-6 mb-4">
+                        <div class="col-md-6 mb-3">
+                            <label for="residence_card_file" class="form-label">在留カード画像・PDF</label>
+                            {% if employee.residence_card_filename %}
+                                <div class="mb-2">
+                                    {% if employee.residence_card_filename.endswith('.pdf') %}
+                                        <div class="alert alert-info py-2">
+                                            <i class="bi bi-file-earmark-pdf me-2"></i>
+                                            {{ employee.residence_card_filename }}
+                                        </div>
+                                    {% else %}
+                                        <img src="{{ url_for('static', filename='uploads/' + employee.residence_card_filename) }}" 
+                                             alt="現在の在留カード" 
+                                             class="img-thumbnail" 
+                                             style="width: 100px; height: 100px; object-fit: cover;">
+                                    {% endif %}
+                                    <p class="form-text">現在の在留カードファイル</p>
+                                </div>
+                            {% endif %}
+                            <div class="input-group">
+                                <input type="file" class="form-control" id="residence_card_file" name="residence_card_file" accept="image/*,.pdf" onchange="previewResidenceCard(this)">
+                                <button type="button" class="btn btn-outline-secondary" onclick="clearResidenceCardPreview()">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">新しいファイルを選択すると、現在のファイルが置き換えられます</div>
+                            <!-- ファイル名表示エリア -->
+                            <div id="residence-card-preview" class="mt-2" style="display: none;">
+                                <div class="alert alert-info py-2">
+                                    <i class="bi bi-file-earmark me-2"></i>
+                                    <span id="residence-card-filename"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="car_insurance_file" class="form-label">自動車保険証画像・PDF</label>
+                            {% if employee.car_insurance_filename %}
+                                <div class="mb-2">
+                                    {% if employee.car_insurance_filename.endswith('.pdf') %}
+                                        <div class="alert alert-info py-2">
+                                            <i class="bi bi-file-earmark-pdf me-2"></i>
+                                            {{ employee.car_insurance_filename }}
+                                        </div>
+                                    {% else %}
+                                        <img src="{{ url_for('static', filename='uploads/' + employee.car_insurance_filename) }}" 
+                                             alt="現在の自動車保険証" 
+                                             class="img-thumbnail" 
+                                             style="max-width: 200px; max-height: 150px;">
+                                        <p class="form-text">現在の自動車保険証</p>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                            <div class="input-group">
+                                <input type="file" class="form-control" id="car_insurance_file" name="car_insurance_file" accept="image/*,.pdf" onchange="previewCarInsurance(this)">
+                                <button type="button" class="btn btn-outline-secondary" onclick="clearCarInsurancePreview()">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">新しいファイルを選択すると、現在の自動車保険証が置き換えられます</div>
+                            <!-- ファイル名表示エリア -->
+                            <div id="car-insurance-preview" class="mt-2" style="display: none;">
+                                <div class="alert alert-info py-2">
+                                    <i class="bi bi-file-earmark me-2"></i>
+                                    <span id="car-insurance-filename"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- HR情報 (管理者専用) -->
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-briefcase me-2"></i>人事情報
+                                <small class="text-muted">(管理者のみ表示)</small>
+                            </h6>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="position" class="form-label">役職</label>
+                            <input type="text" class="form-control" id="position" name="position" 
+                                   value="{{ employee.position or '' }}" placeholder="例: 主任、課長">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="department" class="form-label">部署</label>
+                            <select class="form-select" id="department" name="department">
+                                <option value="" {% if not employee.department %}selected{% endif %}>選択してください</option>
+                                <option value="営業部" {% if employee.department == '営業部' %}selected{% endif %}>営業部</option>
+                                <option value="マーケティング部" {% if employee.department == 'マーケティング部' %}selected{% endif %}>マーケティング部</option>
+                                <option value="開発部" {% if employee.department == '開発部' %}selected{% endif %}>開発部</option>
+                                <option value="技術部" {% if employee.department == '技術部' %}selected{% endif %}>技術部</option>
+                                <option value="製造部" {% if employee.department == '製造部' %}selected{% endif %}>製造部</option>
+                                <option value="品質保証部" {% if employee.department == '品質保証部' %}selected{% endif %}>品質保証部</option>
+                                <option value="人事部" {% if employee.department == '人事部' %}selected{% endif %}>人事部</option>
+                                <option value="総務部" {% if employee.department == '総務部' %}selected{% endif %}>総務部</option>
+                                <option value="経理部" {% if employee.department == '経理部' %}selected{% endif %}>経理部</option>
+                                <option value="法務部" {% if employee.department == '法務部' %}selected{% endif %}>法務部</option>
+                                <option value="情報システム部" {% if employee.department == '情報システム部' %}selected{% endif %}>情報システム部</option>
+                                <option value="カスタマーサポート部" {% if employee.department == 'カスタマーサポート部' %}selected{% endif %}>カスタマーサポート部</option>
+                                <option value="購買部" {% if employee.department == '購買部' %}selected{% endif %}>購買部</option>
+                                <option value="物流部" {% if employee.department == '物流部' %}selected{% endif %}>物流部</option>
+                                <option value="企画部" {% if employee.department == '企画部' %}selected{% endif %}>企画部</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="hire_type" class="form-label">雇用形態</label>
+                            <select class="form-select" id="hire_type" name="hire_type">
+                                <option value="" {% if not employee.hire_type %}selected{% endif %}>選択してください</option>
+                                <option value="正社員" {% if employee.hire_type == '正社員' %}selected{% endif %}>正社員</option>
+                                <option value="契約社員" {% if employee.hire_type == '契約社員' %}selected{% endif %}>契約社員</option>
+                                <option value="派遣社員" {% if employee.hire_type == '派遣社員' %}selected{% endif %}>派遣社員</option>
+                                <option value="パート・アルバイト" {% if employee.hire_type == 'パート・アルバイト' %}selected{% endif %}>パート・アルバイト</option>
+                                <option value="業務委託" {% if employee.hire_type == '業務委託' %}selected{% endif %}>業務委託</option>
+                                <option value="インターン" {% if employee.hire_type == 'インターン' %}selected{% endif %}>インターン</option>
+                                <option value="その他" {% if employee.hire_type == 'その他' %}selected{% endif %}>その他</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="work_history" class="form-label">経歴</label>
+                            <textarea class="form-control" id="work_history" name="work_history" rows="3" 
+                                      placeholder="職歴や経験について記載">{{ employee.work_history or '' }}</textarea>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="skills" class="form-label">スキル</label>
+                            <textarea class="form-control" id="skills" name="skills" rows="3" 
+                                      placeholder="技術スキル、言語能力など">{{ employee.skills or '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="qualifications" class="form-label">資格</label>
+                            <textarea class="form-control" id="qualifications" name="qualifications" rows="3" 
+                                      placeholder="保有資格、免許など">{{ employee.qualifications or '' }}</textarea>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="salary_grade" class="form-label">給与等級</label>
+                            <select class="form-select" id="salary_grade" name="salary_grade">
+                                <option value="" {% if not employee.salary_grade %}selected{% endif %}>選択してください</option>
+                                <option value="S1" {% if employee.salary_grade == 'S1' %}selected{% endif %}>S1</option>
+                                <option value="S2" {% if employee.salary_grade == 'S2' %}selected{% endif %}>S2</option>
+                                <option value="S3" {% if employee.salary_grade == 'S3' %}selected{% endif %}>S3</option>
+                                <option value="A1" {% if employee.salary_grade == 'A1' %}selected{% endif %}>A1</option>
+                                <option value="A2" {% if employee.salary_grade == 'A2' %}selected{% endif %}>A2</option>
+                                <option value="A3" {% if employee.salary_grade == 'A3' %}selected{% endif %}>A3</option>
+                                <option value="B1" {% if employee.salary_grade == 'B1' %}selected{% endif %}>B1</option>
+                                <option value="B2" {% if employee.salary_grade == 'B2' %}selected{% endif %}>B2</option>
+                                <option value="B3" {% if employee.salary_grade == 'B3' %}selected{% endif %}>B3</option>
+                                <option value="C1" {% if employee.salary_grade == 'C1' %}selected{% endif %}>C1</option>
+                                <option value="C2" {% if employee.salary_grade == 'C2' %}selected{% endif %}>C2</option>
+                                <option value="C3" {% if employee.salary_grade == 'C3' %}selected{% endif %}>C3</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-4">
                             <label for="address" class="form-label">住所</label>
                             <textarea class="form-control" id="address" name="address" rows="3" placeholder="例: 東京都渋谷区...">{{ employee.address or '' }}</textarea>
                         </div>
@@ -229,4 +384,71 @@
         </div>
     </div>
 </div>
+
+<script>
+    function previewImage(input, previewId) {
+        const preview = document.getElementById(previewId);
+        const img = document.getElementById(previewId + '-img');
+        
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                img.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+    
+    function clearPhotoPreview(inputId, previewId) {
+        const input = document.getElementById(inputId);
+        const preview = document.getElementById(previewId);
+        
+        input.value = '';
+        preview.style.display = 'none';
+    }
+    
+    function previewResidenceCard(input) {
+        const preview = document.getElementById('residence-card-preview');
+        const filename = document.getElementById('residence-card-filename');
+        
+        if (input.files && input.files[0]) {
+            preview.style.display = 'block';
+            filename.textContent = input.files[0].name;
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+    
+    function clearResidenceCardPreview() {
+        const input = document.getElementById('residence_card_file');
+        const preview = document.getElementById('residence-card-preview');
+        
+        input.value = '';
+        preview.style.display = 'none';
+    }
+    
+    function previewCarInsurance(input) {
+        const preview = document.getElementById('car-insurance-preview');
+        const filename = document.getElementById('car-insurance-filename');
+        
+        if (input.files && input.files[0]) {
+            preview.style.display = 'block';
+            filename.textContent = input.files[0].name;
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+    
+    function clearCarInsurancePreview() {
+        const input = document.getElementById('car_insurance_file');
+        const preview = document.getElementById('car-insurance-preview');
+        
+        input.value = '';
+        preview.style.display = 'none';
+    }
+</script>
+
 {% endblock %}

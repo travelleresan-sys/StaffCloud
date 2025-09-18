@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}会社カレンダー管理{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-calendar3 me-2"></i>会社カレンダー管理</h1>
+            <div>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>戻る
+                </a>
+                <a href="{{ url_for('calendar_view') }}" class="btn btn-outline-info">
+                    <i class="bi bi-calendar-month me-1"></i>カレンダー表示
+                </a>
+                <a href="{{ url_for('calendar_pdf') }}" class="btn btn-outline-danger">
+                    <i class="bi bi-file-pdf me-1"></i>PDF発行
+                </a>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEventModal">
+                    <i class="bi bi-plus-lg me-1"></i>新規追加
+                </button>
+            </div>
+        </div>
+
+        <!-- カレンダー設定と統計 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-gear me-2"></i>カレンダー設定
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('calendar_settings') }}">
+                            <div class="row">
+                                <div class="col-8">
+                                    <label for="start_month" class="form-label">カレンダー開始月</label>
+                                    <select class="form-select" id="start_month" name="start_month">
+                                        <option value="1" {% if start_month == 1 %}selected{% endif %}>1月（1月〜12月）</option>
+                                        <option value="4" {% if start_month == 4 %}selected{% endif %}>4月（4月〜3月）</option>
+                                        <option value="7" {% if start_month == 7 %}selected{% endif %}>7月（7月〜6月）</option>
+                                        <option value="10" {% if start_month == 10 %}selected{% endif %}>10月（10月〜9月）</option>
+                                    </select>
+                                </div>
+                                <div class="col-4 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-lg me-1"></i>設定
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-calendar-event me-2"></i>{{ current_year }}年 休日統計
+                        </h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="display-4 text-primary mb-2">{{ holiday_count }}</div>
+                        <p class="text-muted mb-0">年間休日数</p>
+                        <small class="text-muted">
+                            （祝日・会社休日・土日の合計）
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- カレンダーイベント一覧 -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-list-ul me-2"></i>登録済みイベント・休日一覧
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if calendar_events %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>日付</th>
+                                <th>タイトル</th>
+                                <th>種別</th>
+                                <th>繰り返し</th>
+                                <th>説明</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for event in calendar_events %}
+                            <tr>
+                                <td>{{ event.event_date.strftime('%Y/%m/%d') }}</td>
+                                <td>{{ event.title }}</td>
+                                <td>
+                                    {% if event.event_type == 'holiday' %}
+                                        <span class="badge bg-danger">休日</span>
+                                    {% else %}
+                                        <span class="badge bg-info">イベント</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if event.is_recurring %}
+                                        <i class="bi bi-arrow-repeat text-success"></i> 毎年
+                                    {% else %}
+                                        <i class="bi bi-circle text-muted"></i> なし
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if event.description %}
+                                        {{ event.description[:50] }}{% if event.description|length > 50 %}...{% endif %}
+                                    {% else %}
+                                        <span class="text-muted">なし</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ url_for('edit_calendar_event', event_id=event.id) }}" 
+                                           class="btn btn-outline-primary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{{ url_for('delete_calendar_event', event_id=event.id) }}" 
+                                           class="btn btn-outline-danger"
+                                           onclick="return confirm('「{{ event.title }}」を削除してもよろしいですか？')">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x text-muted" style="font-size: 4rem;"></i>
+                    <p class="text-muted mt-3">登録されているイベント・休日がありません。</p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEventModal">
+                        <i class="bi bi-plus-lg me-1"></i>最初のイベントを追加
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新規イベント追加モーダル -->
+<div class="modal fade" id="addEventModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-lg me-2"></i>新しいイベント・休日を追加
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_calendar_event') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">タイトル <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="event_date" class="form-label">日付 <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="event_date" name="event_date" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="event_type" class="form-label">種別 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="event_type" name="event_type" required>
+                            <option value="">選択してください</option>
+                            <option value="holiday">休日</option>
+                            <option value="event">イベント</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_recurring" name="is_recurring">
+                            <label class="form-check-label" for="is_recurring">
+                                毎年繰り返し
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">説明</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" 
+                                  placeholder="イベントの詳細や備考を入力してください"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-1"></i>追加
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

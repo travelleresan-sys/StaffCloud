@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+
+{% block title %}{{ year }}年 会社カレンダー{% endblock %}
+
+{% block content %}
+<style>
+.calendar-container {
+    margin-bottom: 1rem;
+}
+
+.month-calendar {
+    border: 2px solid #dee2e6;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    height: fit-content;
+}
+
+.month-header {
+    background: linear-gradient(45deg, #0d6efd, #0b5ed7);
+    color: white;
+    text-align: center;
+    padding: 0.75rem;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    gap: 0;
+    border-collapse: collapse;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.weekday {
+    padding: 0.125rem;
+    text-align: center;
+    font-weight: bold;
+    font-size: 0.8rem;
+    border-right: 1px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 60px;
+    min-height: 60px;
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+.weekday:last-child {
+    border-right: none;
+}
+
+.weekday.sunday {
+    color: #dc3545;
+}
+
+.weekday.saturday {
+    color: #0066cc;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: repeat(5, 1fr);  /* 縦5行に固定 */
+    gap: 0;
+    border-collapse: collapse;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    height: 300px;  /* 全体の高さを固定 */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.calendar-day {
+    border-right: 1px solid #dee2e6;
+    border-bottom: 1px solid #dee2e6;
+    padding: 2px;
+    position: relative;
+    background: white;
+    transition: background-color 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+.calendar-day:nth-child(7n) {
+    border-right: none;
+}
+
+/* 最後の行のボーダーは残す（5行固定のため） */
+.calendar-grid .calendar-day:nth-child(n+29) {
+    border-bottom: 1px solid #dee2e6;
+}
+
+.calendar-day:hover {
+    background-color: #f8f9fa;
+}
+
+.calendar-day.other-month {
+    background-color: #f8f9fa;
+    color: #6c757d;
+}
+
+.calendar-day.weekend {
+    background-color: #fafbfc;
+}
+
+
+.calendar-day.has-event {
+    background-color: #fff3cd;  /* その他イベント用黄色背景 */
+}
+
+.calendar-day.has-holiday {
+    background-color: white !important;  /* 祝祭日用白背景 */
+}
+
+.calendar-day.has-holiday .day-number {
+    color: #dc3545 !important;  /* 祝祭日の日付を赤色 */
+}
+
+.calendar-day.has-vacation {
+    background-color: #c8e6c8 !important;  /* 有給消化日用緑背景 */
+}
+
+.calendar-day.has-company-holiday {
+    background-color: white !important;  /* 会社休日用白背景 */
+}
+
+.calendar-day.has-company-holiday .day-number {
+    color: #dc3545 !important;  /* 会社休日の日付を赤色 */
+}
+
+.day-number {
+    font-weight: bold;
+    font-size: 0.75rem;
+    margin-bottom: 0.0625rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.day-number.sunday {
+    color: #dc3545;
+}
+
+.day-number.saturday {
+    color: #0066cc;
+}
+
+.event-item {
+    font-size: 0.5rem;
+    padding: 0.0625rem;
+    margin: 0.0625rem 0;
+    border-radius: 1px;
+    line-height: 1;
+    word-wrap: break-word;
+    word-break: break-all;
+    text-align: center;
+    width: 100%;
+    max-width: 100%;
+    flex-shrink: 1;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+}
+
+.event-holiday {
+    background-color: #f8d7da;
+    color: #721c24;
+    border-left: 3px solid #dc3545;
+}
+
+.event-event {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border-left: 3px solid #17a2b8;
+}
+
+.year-navigation {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.year-navigation h1 {
+    display: inline-block;
+    margin: 0 2rem;
+}
+
+@media (max-width: 768px) {
+    .calendar-day {
+        min-height: 50px;
+        height: 50px;
+        padding: 0.0625rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .weekday {
+        height: 50px;
+        min-height: 50px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .day-number {
+        font-size: 0.7rem;
+    }
+    
+    .event-item {
+        font-size: 0.45rem;
+        -webkit-line-clamp: 1;
+    }
+}
+
+@media print {
+    .no-print {
+        display: none;
+    }
+    
+    .calendar-container {
+        page-break-inside: avoid;
+        margin-bottom: 1rem;
+    }
+    
+    .month-calendar {
+        box-shadow: none;
+        border: 2px solid #000;
+    }
+    
+    .calendar-day {
+        border-right: 1px solid #000;
+        border-bottom: 1px solid #000;
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    .weekday {
+        border-right: 1px solid #000;
+        background: #f0f0f0 !important;
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color: #000 !important;
+        font-weight: bold !important;
+    }
+    
+    .weekdays {
+        border-bottom: 2px solid #000;
+    }
+    
+    .day-number {
+        color: #000 !important;
+        font-weight: bold !important;
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    .day-number.sunday {
+        color: #dc3545 !important;
+    }
+    
+    .day-number.saturday {
+        color: #0066cc !important;
+    }
+    
+    .event-item {
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color: #000 !important;
+        background: #f0f0f0 !important;
+        border-left: 2px solid #000 !important;
+    }
+    
+    .event-holiday {
+        background: #ffebee !important;
+        border-left: 3px solid #dc3545 !important;
+    }
+    
+    .event-event {
+        background: #e3f2fd !important;
+        border-left: 3px solid #1976d2 !important;
+    }
+}
+</style>
+
+<div class="no-print">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-calendar-month me-2"></i>会社カレンダー</h1>
+        <div>
+            <a href="{{ url_for('company_calendar') }}" class="btn btn-secondary">
+                <i class="bi bi-list me-1"></i>管理画面
+            </a>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>ダッシュボード
+            </a>
+            <a href="{{ url_for('calendar_pdf') }}" class="btn btn-outline-danger">
+                <i class="bi bi-file-pdf me-1"></i>PDF発行
+            </a>
+            <button onclick="window.print()" class="btn btn-outline-primary">
+                <i class="bi bi-printer me-1"></i>印刷
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 年選択ナビゲーション -->
+<div class="year-navigation no-print">
+    <a href="{{ url_for('calendar_view', year=year-1) }}" class="btn btn-outline-primary">
+        <i class="bi bi-chevron-left"></i> {{ year-1 }}年
+    </a>
+    <h1 class="d-inline-block mx-3">{{ year }}年</h1>
+    <a href="{{ url_for('calendar_view', year=year+1) }}" class="btn btn-outline-primary">
+        {{ year+1 }}年 <i class="bi bi-chevron-right"></i>
+    </a>
+</div>
+
+<!-- 12ヶ月のカレンダー表示（2列レイアウト） -->
+<div class="row">
+    {% for month_data in calendar_data %}
+    <div class="col-lg-6 col-md-12 mb-4">
+        <div class="calendar-container">
+            <div class="month-calendar">
+                <div class="month-header">
+                    {{ month_data.display_year }}年 {{ month_data.month_name }}
+                </div>
+                
+                <!-- 曜日ヘッダー -->
+                <div class="weekdays">
+                    <div class="weekday sunday">日</div>
+                    <div class="weekday">月</div>
+                    <div class="weekday">火</div>
+                    <div class="weekday">水</div>
+                    <div class="weekday">木</div>
+                    <div class="weekday">金</div>
+                    <div class="weekday saturday">土</div>
+                </div>
+                
+                <!-- カレンダーグリッド -->
+                <div class="calendar-grid">
+                    {% for week in month_data.weeks %}
+                        {% for day_data in week %}
+                        <div class="calendar-day 
+                            {% if day_data.is_other_month %}other-month{% endif %}
+                            {% if day_data.is_weekend %}weekend{% endif %}
+                            {% if day_data.events %}
+                                {% for event in day_data.events %}
+                                    {% if event.event_type == 'holiday' %}has-holiday{% endif %}
+                                    {% if event.event_type == 'company_holiday' %}has-company-holiday{% endif %}
+                                    {% if event.event_type == 'vacation' %}has-vacation{% endif %}
+                                    {% if event.event_type == 'event' %}has-event{% endif %}
+                                {% endfor %}
+                            {% endif %}">
+                            
+                            {% if day_data.day %}
+                                <div class="day-number 
+                                    {% if day_data.is_weekend %}
+                                        {% if day_data.date.weekday() == 6 %}sunday{% else %}saturday{% endif %}
+                                    {% endif %}">
+                                    {{ day_data.day }}
+                                </div>
+                                
+                                <!-- イベント表示 -->
+                                {% for event in day_data.events %}
+                                <div class="event-item event-{{ event.event_type }}" 
+                                     title="{{ event.title }}{% if event.description %} - {{ event.description }}{% endif %}">
+                                    {{ event.title }}
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 奇数番目（1, 3, 5, 7, 9, 11番目）の後に改行（2列レイアウト） -->
+    {% if loop.index % 2 == 0 %}
+        <div class="w-100"></div>
+    {% endif %}
+    {% endfor %}
+</div>
+
+<!-- 凡例 -->
+<div class="row mt-4 no-print">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>凡例
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="event-item event-holiday me-2" style="width: 20px; height: 15px;"></div>
+                            <span>休日</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="event-item event-event me-2" style="width: 20px; height: 15px;"></div>
+                            <span>イベント</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="calendar-day weekend me-2" style="width: 20px; height: 15px; background-color: #fafbfc;"></div>
+                            <span>土日</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

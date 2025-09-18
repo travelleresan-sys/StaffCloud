@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+
+{% block title %}給与設定 - {{ employee.name }} - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h3 mb-0">
+                        <i class="bi bi-gear me-2"></i>給与設定
+                    </h2>
+                    <small class="text-muted">{{ employee.name }} ({{ employee.employee_id }})</small>
+                </div>
+                <div>
+                    <a href="{{ url_for('payroll_dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST">
+        <div class="row">
+            <!-- 基本給与設定 -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-currency-yen me-2"></i>基本給与設定
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="wage_type" class="form-label">給与形態 <span class="text-danger">*</span></label>
+                            <select name="wage_type" id="wage_type" class="form-select" required onchange="toggleWageFields()">
+                                <option value="monthly" {% if not settings or settings.wage_type == 'monthly' %}selected{% endif %}>月給制</option>
+                                <option value="daily" {% if settings and settings.wage_type == 'daily' %}selected{% endif %}>日給制</option>
+                                <option value="hourly" {% if settings and settings.wage_type == 'hourly' %}selected{% endif %}>時給制</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3" id="base_salary_field">
+                            <label for="base_salary" class="form-label">基本給（月給） <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">¥</span>
+                                <input type="number" name="base_salary" id="base_salary" class="form-control" 
+                                       value="{{ settings.base_salary if settings else 0 }}" min="0" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="daily_rate_field" style="display: none;">
+                            <label for="daily_rate" class="form-label">日給</label>
+                            <div class="input-group">
+                                <span class="input-group-text">¥</span>
+                                <input type="number" name="daily_rate" id="daily_rate" class="form-control" 
+                                       value="{{ settings.daily_rate if settings else 0 }}" min="0">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="hourly_rate_field" style="display: none;">
+                            <label for="hourly_rate" class="form-label">時給</label>
+                            <div class="input-group">
+                                <span class="input-group-text">¥</span>
+                                <input type="number" name="hourly_rate" id="hourly_rate" class="form-control" 
+                                       value="{{ settings.hourly_rate if settings else 0 }}" min="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 各種手当 -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-plus-circle me-2"></i>各種手当
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="position_allowance" class="form-label">役職手当</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">¥</span>
+                                    <input type="number" name="position_allowance" id="position_allowance" class="form-control" 
+                                           value="{{ settings.position_allowance if settings else 0 }}" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="family_allowance" class="form-label">家族手当</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">¥</span>
+                                    <input type="number" name="family_allowance" id="family_allowance" class="form-control" 
+                                           value="{{ settings.family_allowance if settings else 0 }}" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="transportation_allowance" class="form-label">交通費</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">¥</span>
+                                    <input type="number" name="transportation_allowance" id="transportation_allowance" class="form-control" 
+                                           value="{{ settings.transportation_allowance if settings else 0 }}" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="housing_allowance" class="form-label">住宅手当</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">¥</span>
+                                    <input type="number" name="housing_allowance" id="housing_allowance" class="form-control" 
+                                           value="{{ settings.housing_allowance if settings else 0 }}" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="meal_allowance" class="form-label">食事手当</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">¥</span>
+                                    <input type="number" name="meal_allowance" id="meal_allowance" class="form-control" 
+                                           value="{{ settings.meal_allowance if settings else 0 }}" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="skill_allowance" class="form-label">技能手当</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">¥</span>
+                                    <input type="number" name="skill_allowance" id="skill_allowance" class="form-control" 
+                                           value="{{ settings.skill_allowance if settings else 0 }}" min="0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 社会保険設定 -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-shield-check me-2"></i>社会保険設定
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="health_insurance_rate" class="form-label">健康保険料率（%）</label>
+                                <input type="number" name="health_insurance_rate" id="health_insurance_rate" class="form-control" 
+                                       value="{{ settings.health_insurance_rate if settings else 4.95 }}" step="0.01" min="0" max="100">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="pension_insurance_rate" class="form-label">厚生年金保険料率（%）</label>
+                                <input type="number" name="pension_insurance_rate" id="pension_insurance_rate" class="form-control" 
+                                       value="{{ settings.pension_insurance_rate if settings else 9.15 }}" step="0.01" min="0" max="100">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="employment_insurance_rate" class="form-label">雇用保険料率（%）</label>
+                                <input type="number" name="employment_insurance_rate" id="employment_insurance_rate" class="form-control" 
+                                       value="{{ settings.employment_insurance_rate if settings else 0.3 }}" step="0.01" min="0" max="100">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="long_term_care_insurance_rate" class="form-label">介護保険料率（%）<small class="text-muted">40歳以上</small></label>
+                                <input type="number" name="long_term_care_insurance_rate" id="long_term_care_insurance_rate" class="form-control" 
+                                       value="{{ settings.long_term_care_insurance_rate if settings else 0.58 }}" step="0.01" min="0" max="100">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 税金・法定外控除設定 -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-calculator me-2"></i>税金・法定外控除設定
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label for="income_tax_type" class="form-label">所得税計算方法</label>
+                                <select name="income_tax_type" id="income_tax_type" class="form-select">
+                                    <option value="automatic" {% if not settings or settings.income_tax_type == 'automatic' %}selected{% endif %}>自動計算</option>
+                                    <option value="manual" {% if settings and settings.income_tax_type == 'manual' %}selected{% endif %}>手動入力</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="resident_tax" class="form-label">住民税（月額）</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">¥</span>
+                                    <input type="number" name="resident_tax" id="resident_tax" class="form-control" 
+                                           value="{{ settings.resident_tax if settings else 0 }}" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="union_fee" class="form-label">組合費</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">¥</span>
+                                    <input type="number" name="union_fee" id="union_fee" class="form-control" 
+                                           value="{{ settings.union_fee if settings else 0 }}" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="parking_fee" class="form-label">駐車場代</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">¥</span>
+                                    <input type="number" name="parking_fee" id="parking_fee" class="form-control" 
+                                           value="{{ settings.parking_fee if settings else 0 }}" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="uniform_fee" class="form-label">制服代</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">¥</span>
+                                    <input type="number" name="uniform_fee" id="uniform_fee" class="form-control" 
+                                           value="{{ settings.uniform_fee if settings else 0 }}" min="0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 保存ボタン -->
+        <div class="row">
+            <div class="col-12">
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="button" class="btn btn-outline-secondary me-md-2" onclick="history.back()">
+                        <i class="bi bi-x-circle me-1"></i>キャンセル
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i>保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleWageFields() {
+    const wageType = document.getElementById('wage_type').value;
+    const baseSalaryField = document.getElementById('base_salary_field');
+    const dailyRateField = document.getElementById('daily_rate_field');
+    const hourlyRateField = document.getElementById('hourly_rate_field');
+    
+    // すべて非表示
+    baseSalaryField.style.display = 'none';
+    dailyRateField.style.display = 'none';
+    hourlyRateField.style.display = 'none';
+    
+    // requiredを削除
+    document.getElementById('base_salary').removeAttribute('required');
+    document.getElementById('daily_rate').removeAttribute('required');
+    document.getElementById('hourly_rate').removeAttribute('required');
+    
+    // 選択された形態に応じて表示
+    switch(wageType) {
+        case 'monthly':
+            baseSalaryField.style.display = 'block';
+            document.getElementById('base_salary').setAttribute('required', 'required');
+            break;
+        case 'daily':
+            dailyRateField.style.display = 'block';
+            document.getElementById('daily_rate').setAttribute('required', 'required');
+            break;
+        case 'hourly':
+            hourlyRateField.style.display = 'block';
+            document.getElementById('hourly_rate').setAttribute('required', 'required');
+            break;
+    }
+}
+
+// ページ読み込み時に実行
+document.addEventListener('DOMContentLoaded', function() {
+    toggleWageFields();
+});
+</script>
+{% endblock %}

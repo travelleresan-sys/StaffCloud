@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}36協定詳細 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="bi bi-file-earmark-text me-2"></i>36協定詳細
+                    </h1>
+                    <p class="text-muted mb-0">労働基準法第36条に基づく時間外・休日労働協定届</p>
+                </div>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('list_36agreements') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>一覧に戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 基本情報 -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-building me-2"></i>事業場の基本情報
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <strong>事業の種類:</strong> {{ agreement.business_type or '未設定' }}
+                </div>
+                <div class="col-md-6">
+                    <strong>事業の名称:</strong> {{ agreement.business_name or '未設定' }}
+                </div>
+                <div class="col-md-4">
+                    <strong>郵便番号:</strong> {{ agreement.business_postal_code or '未設定' }}
+                </div>
+                <div class="col-md-4">
+                    <strong>住所:</strong> {{ agreement.business_address or '未設定' }}
+                </div>
+                <div class="col-md-4">
+                    <strong>電話番号:</strong> {{ agreement.business_phone or '未設定' }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 協定期間 -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-calendar-range me-2"></i>協定の有効期間
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <strong>有効期間開始:</strong> {{ agreement.agreement_start_date }}
+                </div>
+                <div class="col-md-6">
+                    <strong>有効期間終了:</strong> {{ agreement.agreement_end_date }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 時間外労働 -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">
+                <i class="bi bi-clock me-2"></i>時間外労働の詳細
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <strong>時間外労働が必要な事由:</strong>
+                    <div class="mt-2">
+                        {% if agreement.overtime_reason_1 %}
+                            <div class="mb-2">
+                                <span class="badge bg-primary me-2">事由1</span>{{ agreement.overtime_reason_1 }}
+                                {% if agreement.overtime_business_type_1 %}<br><small class="text-muted ms-5">業務: {{ agreement.overtime_business_type_1 }}</small>{% endif %}
+                            </div>
+                        {% endif %}
+                        {% if agreement.overtime_reason_2 %}
+                            <div class="mb-2">
+                                <span class="badge bg-info me-2">事由2</span>{{ agreement.overtime_reason_2 }}
+                                {% if agreement.overtime_business_type_2 %}<br><small class="text-muted ms-5">業務: {{ agreement.overtime_business_type_2 }}</small>{% endif %}
+                            </div>
+                        {% endif %}
+                        {% if agreement.overtime_reason_3 %}
+                            <div class="mb-2">
+                                <span class="badge bg-warning me-2">事由3</span>{{ agreement.overtime_reason_3 }}
+                                {% if agreement.overtime_business_type_3 %}<br><small class="text-muted ms-5">業務: {{ agreement.overtime_business_type_3 }}</small>{% endif %}
+                            </div>
+                        {% endif %}
+                        {% if agreement.overtime_reason_4 %}
+                            <div class="mb-2">
+                                <span class="badge bg-secondary me-2">事由4</span>{{ agreement.overtime_reason_4 }}
+                                {% if agreement.overtime_business_type_4 %}<br><small class="text-muted ms-5">業務: {{ agreement.overtime_business_type_4 }}</small>{% endif %}
+                            </div>
+                        {% endif %}
+                        {% if not (agreement.overtime_reason_1 or agreement.overtime_reason_2 or agreement.overtime_reason_3 or agreement.overtime_reason_4) %}
+                            <span class="text-muted">未設定</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <strong>対象従業員数:</strong> {{ agreement.overtime_employee_count or 0 }}名
+                </div>
+                <div class="col-md-4">
+                    <strong>1日の上限時間:</strong> {{ agreement.overtime_hours_daily or 0 }}時間
+                </div>
+                <div class="col-md-6">
+                    <strong>1ヶ月の上限時間:</strong> {{ agreement.overtime_hours_monthly or 0 }}時間
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 休日労働 -->
+    {% if agreement.holiday_work_reason_1 or agreement.holiday_work_reason_2 or agreement.holiday_work_reason_3 or agreement.holiday_work_reason_4 %}
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-calendar-x me-2"></i>休日労働の詳細
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <strong>休日労働が必要な事由:</strong>
+                    <div class="mt-2">
+                        {% if agreement.holiday_work_reason_1 %}
+                            <div class="mb-2">
+                                <span class="badge bg-danger me-2">事由1</span>{{ agreement.holiday_work_reason_1 }}
+                                {% if agreement.holiday_work_business_type_1 %}<br><small class="text-muted ms-5">業務: {{ agreement.holiday_work_business_type_1 }}</small>{% endif %}
+                            </div>
+                        {% endif %}
+                        {% if agreement.holiday_work_reason_2 %}
+                            <div class="mb-2">
+                                <span class="badge bg-warning me-2">事由2</span>{{ agreement.holiday_work_reason_2 }}
+                                {% if agreement.holiday_work_business_type_2 %}<br><small class="text-muted ms-5">業務: {{ agreement.holiday_work_business_type_2 }}</small>{% endif %}
+                            </div>
+                        {% endif %}
+                        {% if agreement.holiday_work_reason_3 %}
+                            <div class="mb-2">
+                                <span class="badge bg-info me-2">事由3</span>{{ agreement.holiday_work_reason_3 }}
+                                {% if agreement.holiday_work_business_type_3 %}<br><small class="text-muted ms-5">業務: {{ agreement.holiday_work_business_type_3 }}</small>{% endif %}
+                            </div>
+                        {% endif %}
+                        {% if agreement.holiday_work_reason_4 %}
+                            <div class="mb-2">
+                                <span class="badge bg-secondary me-2">事由4</span>{{ agreement.holiday_work_reason_4 }}
+                                {% if agreement.holiday_work_business_type_4 %}<br><small class="text-muted ms-5">業務: {{ agreement.holiday_work_business_type_4 }}</small>{% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <strong>対象従業員数:</strong> {{ agreement.holiday_work_employee_count or 0 }}名
+                </div>
+                <div class="col-md-4">
+                    <strong>法定休日労働可能日数:</strong> {{ agreement.legal_holiday_days_count or 0 }}日/年
+                </div>
+                <div class="col-md-4">
+                    <strong>始業時刻:</strong> {{ agreement.holiday_work_start_time or '未設定' }}
+                </div>
+                <div class="col-md-4">
+                    <strong>終業時刻:</strong> {{ agreement.holiday_work_end_time or '未設定' }}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 協定締結情報 -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-file-earmark-check me-2"></i>協定締結情報
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <strong>協定締結日:</strong> {{ agreement.agreement_conclusion_date }}
+                </div>
+                <div class="col-md-6">
+                    <strong>選出方法:</strong> {{ agreement.worker_representative_selection_method or '未設定' }}
+                </div>
+                <div class="col-md-6">
+                    <strong>労働者代表:</strong> {{ agreement.worker_representative_name or '未設定' }}
+                    {% if agreement.worker_representative_position %}({{ agreement.worker_representative_position }}){% endif %}
+                </div>
+                <div class="col-md-6">
+                    <strong>使用者:</strong> {{ agreement.employer_name or '未設定' }}
+                    {% if agreement.employer_position %}({{ agreement.employer_position }}){% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 状態・備考 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-info-circle me-2"></i>状態・備考
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>状態:</strong> 
+                    {% if agreement.status == 'draft' %}
+                        <span class="badge bg-secondary">下書き</span>
+                    {% elif agreement.status == 'submitted' %}
+                        <span class="badge bg-primary">提出済み</span>
+                    {% elif agreement.status == 'active' %}
+                        <span class="badge bg-success">有効</span>
+                    {% elif agreement.status == 'expired' %}
+                        <span class="badge bg-warning">期限切れ</span>
+                    {% endif %}
+                </div>
+                <div class="col-md-4">
+                    <strong>作成日:</strong> {{ agreement.created_at.strftime('%Y年%m月%d日') }}
+                </div>
+                <div class="col-md-4">
+                    <strong>更新日:</strong> {{ agreement.updated_at.strftime('%Y年%m月%d日') }}
+                </div>
+                {% if agreement.notes %}
+                <div class="col-12 mt-3">
+                    <strong>備考:</strong><br>
+                    {{ agreement.notes }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

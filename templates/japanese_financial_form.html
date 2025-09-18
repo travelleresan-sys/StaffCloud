@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>財務諸表作成 - 財務諸表Excel出力システム</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <!-- ヘッダー -->
+                <div class="text-center mb-4">
+                    <h1 class="h2 text-primary">
+                        <i class="bi bi-file-earmark-excel me-2"></i>
+                        財務諸表作成
+                    </h1>
+                    <p class="text-muted">会社情報を入力してExcel形式の財務諸表を生成します</p>
+                </div>
+
+                <!-- エラーメッセージ -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- 入力フォーム -->
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">
+                            <i class="bi bi-building me-2"></i>
+                            会社情報入力
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" id="financialForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="company_name" class="form-label">
+                                            <i class="bi bi-building me-1"></i>
+                                            会社名 <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text"
+                                               class="form-control"
+                                               id="company_name"
+                                               name="company_name"
+                                               value="株式会社サンプル"
+                                               required>
+                                        <div class="form-text">例：株式会社○○○</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="fiscal_year" class="form-label">
+                                            <i class="bi bi-calendar me-1"></i>
+                                            決算年度 <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select" id="fiscal_year" name="fiscal_year" required>
+                                            {% for year in range(2020, 2030) %}
+                                                <option value="{{ year }}" {% if year == 2025 %}selected{% endif %}>
+                                                    {{ year }}年3月期
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="form-text">財務諸表の対象年度</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 出力内容説明 -->
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    出力される財務諸表（混合レイアウト最適化済み）
+                                </h6>
+                                <div class="row small">
+                                    <div class="col-md-6">
+                                        <ul class="mb-0">
+                                            <li>貸借対照表（流動・固定区分）</li>
+                                            <li>損益計算書（段階利益表示）</li>
+                                            <li>キャッシュフロー計算書</li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <ul class="mb-0">
+                                            <li>株主資本等変動計算書</li>
+                                            <li>附属明細書（会計方針・明細）</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <hr>
+                                <small class="text-muted">
+                                    <i class="bi bi-printer me-1"></i>
+                                    <strong>混合レイアウト最適化:</strong>
+                                    <br>
+                                    📄 A4縦向け: 貸借対照表・損益計算書・キャッシュフロー計算書
+                                    <br>
+                                    📄 A4横向け: 株主資本等変動計算書・附属明細書（詳細表示）
+                                    <br>
+                                    <i class="bi bi-lightbulb me-1"></i>
+                                    各シートには日本の会計基準に準拠したサンプルデータが含まれています
+                                </small>
+                            </div>
+
+                            <!-- 送信ボタン -->
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary me-md-2">
+                                    <i class="bi bi-arrow-left me-1"></i>
+                                    戻る
+                                </a>
+                                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                    <i class="bi bi-download me-2"></i>
+                                    <span id="btnText">財務諸表Excel生成・ダウンロード</span>
+                                    <span id="loadingSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status">
+                                        <span class="visually-hidden">生成中...</span>
+                                    </span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 利用上の注意 -->
+                <div class="card mt-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            利用上の注意
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            <li>生成される財務諸表にはサンプルデータが含まれています</li>
+                            <li>実際の会計データを使用する場合は、データ入力機能が必要です</li>
+                            <li>会計処理の詳細については、会計士等の専門家にご相談ください</li>
+                            <li>Excel形式（.xlsx）で出力されます（Microsoft Excel 2007以降対応）</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- フッター -->
+                <div class="text-center mt-4 text-muted">
+                    <p><small>© 2025 財務諸表Excel出力システム</small></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // フォーム送信時のローディング表示
+        document.getElementById('financialForm').addEventListener('submit', function() {
+            const submitBtn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+
+            submitBtn.disabled = true;
+            btnText.textContent = '生成中...';
+            loadingSpinner.classList.remove('d-none');
+        });
+
+        // ページ読み込み時にボタンを有効化（戻る等で戻ってきた場合）
+        window.addEventListener('load', function() {
+            const submitBtn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+
+            submitBtn.disabled = false;
+            btnText.textContent = '財務諸表Excel生成・ダウンロード';
+            loadingSpinner.classList.add('d-none');
+        });
+    </script>
+</body>
+</html>

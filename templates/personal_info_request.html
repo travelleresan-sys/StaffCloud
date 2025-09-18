@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}個人情報更新申請{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-person-gear me-2"></i>個人情報更新申請
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="request_type" class="form-label">変更項目 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="request_type" name="request_type" required>
+                            <option value="">選択してください</option>
+                            <option value="address">住所</option>
+                            <option value="phone">電話番号</option>
+                            <option value="residence_card_expiry">在留カード期限</option>
+                            <option value="residence_card_file">在留カード画像・PDF</option>
+                            <option value="car_insurance_expiry">自動車保険満了日</option>
+                            <option value="car_insurance_file">自動車保険証画像・PDF</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="current_value_display" style="display: none;">
+                        <label class="form-label">現在の値</label>
+                        <div class="form-control-plaintext bg-light p-2 rounded" id="current_value_text">-</div>
+                    </div>
+                    
+                    <div class="mb-3" id="new_value_text_field">
+                        <label for="new_value" class="form-label">新しい値 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="new_value" name="new_value" 
+                               placeholder="新しい値を入力してください">
+                    </div>
+                    
+                    <div class="mb-3" id="new_value_file_field" style="display: none;">
+                        <label for="new_file" class="form-label">新しいファイル <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="new_file" name="new_file" accept="image/*,.pdf" onchange="previewPersonalInfoFile(this)">
+                        <div class="form-text">PNG、JPG、JPEG、PDF形式のファイルを選択してください</div>
+                        <!-- ファイル名表示エリア -->
+                        <div id="personal-info-file-preview" class="mt-2" style="display: none;">
+                            <div class="alert alert-info py-2">
+                                <i class="bi bi-file-earmark me-2"></i>
+                                <span id="personal-info-filename"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">変更理由</label>
+                        <textarea class="form-control" id="reason" name="reason" rows="3" 
+                                  placeholder="変更する理由を記入してください（任意）"></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>注意事項:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>申請後は管理者の承認が必要です</li>
+                            <li>承認されるまで情報は変更されません</li>
+                            <li>承認・却下の結果はダッシュボードで確認できます</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>戻る
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>申請する
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 変更項目選択時に現在の値を表示
+document.getElementById('request_type').addEventListener('change', function() {
+    const requestType = this.value;
+    const currentValueDisplay = document.getElementById('current_value_display');
+    const currentValueText = document.getElementById('current_value_text');
+    const newValueInput = document.getElementById('new_value');
+    
+    if (requestType) {
+        let currentValue = '';
+        let placeholder = '';
+        
+        const textField = document.getElementById('new_value_text_field');
+        const fileField = document.getElementById('new_value_file_field');
+        const newFileInput = document.getElementById('new_file');
+        
+        if (requestType === 'address') {
+            currentValue = '{{ employee.address or "未設定" }}';
+            placeholder = '新しい住所を入力してください';
+            textField.style.display = 'block';
+            fileField.style.display = 'none';
+            newValueInput.required = true;
+            newFileInput.required = false;
+        } else if (requestType === 'phone') {
+            currentValue = '{{ employee.phone_number or "未設定" }}';
+            placeholder = '新しい電話番号を入力してください';
+            textField.style.display = 'block';
+            fileField.style.display = 'none';
+            newValueInput.required = true;
+            newFileInput.required = false;
+        } else if (requestType === 'residence_card_expiry') {
+            currentValue = '{{ employee.residence_card_expiry.strftime("%Y-%m-%d") if employee.residence_card_expiry else "未設定" }}';
+            placeholder = '在留カード期限を入力してください (YYYY-MM-DD)';
+            newValueInput.type = 'date';
+            textField.style.display = 'block';
+            fileField.style.display = 'none';
+            newValueInput.required = true;
+            newFileInput.required = false;
+        } else if (requestType === 'residence_card_file') {
+            currentValue = '{{ employee.residence_card_filename or "未設定" }}';
+            textField.style.display = 'none';
+            fileField.style.display = 'block';
+            newValueInput.required = false;
+            newFileInput.required = true;
+        } else if (requestType === 'car_insurance_expiry') {
+            currentValue = '{{ employee.car_insurance_expiry.strftime("%Y-%m-%d") if employee.car_insurance_expiry else "未設定" }}';
+            placeholder = '自動車保険満了日を入力してください (YYYY-MM-DD)';
+            newValueInput.type = 'date';
+            textField.style.display = 'block';
+            fileField.style.display = 'none';
+            newValueInput.required = true;
+            newFileInput.required = false;
+        } else if (requestType === 'car_insurance_file') {
+            currentValue = '{{ employee.car_insurance_filename or "未設定" }}';
+            textField.style.display = 'none';
+            fileField.style.display = 'block';
+            newValueInput.required = false;
+            newFileInput.required = true;
+        } else {
+            newValueInput.type = 'text';
+            textField.style.display = 'block';
+            fileField.style.display = 'none';
+            newValueInput.required = true;
+            newFileInput.required = false;
+        }
+        
+        currentValueText.textContent = currentValue;
+        newValueInput.placeholder = placeholder;
+        currentValueDisplay.style.display = 'block';
+    } else {
+        currentValueDisplay.style.display = 'none';
+        newValueInput.placeholder = '新しい値を入力してください';
+        newValueInput.required = true;
+        document.getElementById('new_value_text_field').style.display = 'block';
+        document.getElementById('new_value_file_field').style.display = 'none';
+        document.getElementById('new_file').required = false;
+    }
+});
+</script>
+{% endblock %}

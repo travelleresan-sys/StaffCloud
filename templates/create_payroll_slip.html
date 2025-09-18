@@ -1,0 +1,571 @@
+{% extends 'base.html' %}
+
+{% block title %}給与明細書作成 - {{ employee.name }} - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h3 mb-0">
+                        <i class="bi bi-file-earmark-text me-2"></i>給与明細書作成
+                    </h2>
+                    <small class="text-muted">{{ employee.name }} - {{ year }}年{{ month }}月</small>
+                </div>
+                <div>
+                    <a href="{{ url_for('payroll_dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST">
+        <div class="row">
+            <!-- 基本給与項目 -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-currency-yen me-2"></i>支給項目
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>基本給</strong></td>
+                                <td class="text-end">¥{{ "{:,}".format(payroll_calculation.base_salary) }}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="2"><strong>割増賃金</strong></td>
+                            </tr>
+                            {% if payroll_calculation.overtime_minutes > 0 or payroll_calculation.legal_overtime_minutes > 0 %}
+                            <tr>
+                                <td style="padding-left: 20px;">法定時間外労働（25%）: {{ ((payroll_calculation.overtime_minutes + payroll_calculation.legal_overtime_minutes) / 60)|round(1) }}h</td>
+                                <td class="text-end">¥{{ "{:,}".format(payroll_calculation.overtime_allowance or 0) }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if payroll_calculation.night_working_minutes > 0 %}
+                            <tr>
+                                <td style="padding-left: 20px;">深夜労働（25%）: {{ (payroll_calculation.night_working_minutes / 60)|round(1) }}h</td>
+                                <td class="text-end">¥{{ "{:,}".format(payroll_calculation.night_allowance or 0) }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if payroll_calculation.legal_holiday_minutes > 0 %}
+                            <tr>
+                                <td style="padding-left: 20px;">法定休日労働（35%）: {{ (payroll_calculation.legal_holiday_minutes / 60)|round(1) }}h</td>
+                                <td class="text-end">¥{{ "{:,}".format(((payroll_calculation.legal_holiday_minutes / 60) * (payroll_calculation.base_salary / 173) * 1.35)|int) }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if payroll_calculation.holiday_minutes > 0 %}
+                            <tr>
+                                <td style="padding-left: 20px;">法定外休日労働: {{ (payroll_calculation.holiday_minutes / 60)|round(1) }}h</td>
+                                <td class="text-end">¥{{ "{:,}".format(((payroll_calculation.holiday_minutes / 60) * (payroll_calculation.base_salary / 173))|int) }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if payroll_settings %}
+                                {% if payroll_settings.position_allowance > 0 %}
+                                <tr>
+                                    <td>役職手当</td>
+                                    <td class="text-end">¥{{ "{:,}".format(payroll_settings.position_allowance) }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if payroll_settings.family_allowance > 0 %}
+                                <tr>
+                                    <td>家族手当</td>
+                                    <td class="text-end">¥{{ "{:,}".format(payroll_settings.family_allowance) }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if payroll_settings.transportation_allowance > 0 %}
+                                <tr>
+                                    <td>交通費</td>
+                                    <td class="text-end">¥{{ "{:,}".format(payroll_settings.transportation_allowance) }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if payroll_settings.housing_allowance > 0 %}
+                                <tr>
+                                    <td>住宅手当</td>
+                                    <td class="text-end">¥{{ "{:,}".format(payroll_settings.housing_allowance) }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if payroll_settings.meal_allowance > 0 %}
+                                <tr>
+                                    <td>食事手当</td>
+                                    <td class="text-end">¥{{ "{:,}".format(payroll_settings.meal_allowance) }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if payroll_settings.skill_allowance > 0 %}
+                                <tr>
+                                    <td>技能手当</td>
+                                    <td class="text-end">¥{{ "{:,}".format(payroll_settings.skill_allowance) }}</td>
+                                </tr>
+                                {% endif %}
+                            {% endif %}
+                            <tr>
+                                <td>
+                                    臨時の休業補償
+                                    <br><small class="text-muted">（日給: {{ "{:,.0f}".format(payroll_calculation.base_salary / 22) }}円）</small>
+                                </td>
+                                <td class="text-end">
+                                    <div class="row g-1">
+                                        <div class="col-3">
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" id="closure_days" class="form-control text-end" 
+                                                       value="0" min="0" max="31" placeholder="日数" 
+                                                       onchange="calculateClosureCompensation()" style="min-width: 50px;">
+                                                <span class="input-group-text">日</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <select id="closure_percentage" class="form-select form-select-sm" onchange="calculateClosureCompensation()">
+                                                <option value="60" selected>60%</option>
+                                                <option value="70">70%</option>
+                                                <option value="80">80%</option>
+                                                <option value="90">90%</option>
+                                                <option value="100">100%</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-5">
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">¥</span>
+                                                <input type="number" id="temporary_closure_compensation" name="temporary_closure_compensation" 
+                                                       class="form-control text-end" value="0" min="0" readonly 
+                                                       onchange="calculateDeductions()">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted d-block">休業日数と割合を選択すると自動計算されます</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>給与</td>
+                                <td class="text-end">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">¥</span>
+                                        <input type="number" name="salary_payment" class="form-control text-end" 
+                                               value="0" min="0" style="max-width: 100px;" onchange="calculateDeductions()">
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>賞与</td>
+                                <td class="text-end">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">¥</span>
+                                        <input type="number" name="bonus_payment" class="form-control text-end" 
+                                               value="0" min="0" style="max-width: 100px;" onchange="calculateDeductions()">
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>その他手当1</td>
+                                <td class="text-end">
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" name="other_allowance_1_name" class="form-control" placeholder="手当名" style="min-width: 120px;">
+                                        <span class="input-group-text">¥</span>
+                                        <input type="number" name="other_allowance_1" class="form-control text-end" 
+                                               value="0" min="0" style="max-width: 100px;">
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>その他手当2</td>
+                                <td class="text-end">
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" name="other_allowance_2_name" class="form-control" placeholder="手当名" style="min-width: 120px;">
+                                        <span class="input-group-text">¥</span>
+                                        <input type="number" name="other_allowance_2" class="form-control text-end" 
+                                               value="0" min="0" style="max-width: 100px;">
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>その他手当3</td>
+                                <td class="text-end">
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" name="other_allowance_3_name" class="form-control" placeholder="手当名" style="min-width: 120px;">
+                                        <span class="input-group-text">¥</span>
+                                        <input type="number" name="other_allowance_3" class="form-control text-end" 
+                                               value="0" min="0" style="max-width: 100px;">
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>その他手当4</td>
+                                <td class="text-end">
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" name="other_allowance_4_name" class="form-control" placeholder="手当名" style="min-width: 120px;">
+                                        <span class="input-group-text">¥</span>
+                                        <input type="number" name="other_allowance_4" class="form-control text-end" 
+                                               value="0" min="0" style="max-width: 100px;">
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>その他手当5</td>
+                                <td class="text-end">
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" name="other_allowance_5_name" class="form-control" placeholder="手当名" style="min-width: 120px;">
+                                        <span class="input-group-text">¥</span>
+                                        <input type="number" name="other_allowance_5" class="form-control text-end" 
+                                               value="0" min="0" style="max-width: 100px;">
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between fw-bold text-primary">
+                            <span>総支給額</span>
+                            <span id="total_gross">¥{{ "{:,}".format(payroll_calculation.gross_salary) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 控除項目 -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-dash-circle me-2"></i>控除項目
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="text-muted mb-2">法定控除</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td>健康保険料</td>
+                                <td class="text-end">
+                                    <span id="health_insurance">¥0</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>厚生年金保険料</td>
+                                <td class="text-end">
+                                    <span id="pension_insurance">¥0</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>雇用保険料</td>
+                                <td class="text-end">
+                                    <span id="employment_insurance">¥0</span>
+                                </td>
+                            </tr>
+                            {% if employee.birth_date and (2024 - employee.birth_date.year) >= 40 %}
+                            <tr>
+                                <td>介護保険料</td>
+                                <td class="text-end">
+                                    <span id="long_term_care_insurance">¥0</span>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <td>
+                                    所得税
+                                    {% if payroll_settings and payroll_settings.income_tax_type == 'automatic' %}
+                                    <small class="text-success">(自動計算)</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">¥</span>
+                                        <input type="number" name="income_tax" class="form-control text-end" 
+                                               value="{{ existing_slip.income_tax if existing_slip else 0 }}" min="0" 
+                                               {% if payroll_settings and payroll_settings.income_tax_type == 'automatic' %}readonly{% endif %}
+                                               onchange="calculateDeductions()">
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>住民税</td>
+                                <td class="text-end">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">¥</span>
+                                        <input type="number" name="resident_tax" class="form-control text-end" 
+                                               value="{{ existing_slip.resident_tax if existing_slip else (payroll_settings.resident_tax if payroll_settings else 0) }}" 
+                                               min="0" onchange="calculateDeductions()">
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                        
+                        <h6 class="text-muted mb-2 mt-3">法定外控除</h6>
+                        <table class="table table-sm">
+                            {% if payroll_settings and payroll_settings.union_fee > 0 %}
+                            <tr>
+                                <td>組合費</td>
+                                <td class="text-end">¥{{ "{:,}".format(payroll_settings.union_fee) }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if payroll_settings and payroll_settings.parking_fee > 0 %}
+                            <tr>
+                                <td>駐車場代</td>
+                                <td class="text-end">¥{{ "{:,}".format(payroll_settings.parking_fee) }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if payroll_settings and payroll_settings.uniform_fee > 0 %}
+                            <tr>
+                                <td>制服代</td>
+                                <td class="text-end">¥{{ "{:,}".format(payroll_settings.uniform_fee) }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <td>その他控除1</td>
+                                <td class="text-end">
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" name="other_deduction_1_name" class="form-control" placeholder="控除名" style="min-width: 120px;">
+                                        <span class="input-group-text">¥</span>
+                                        <input type="number" name="other_deduction_1" class="form-control text-end" 
+                                               value="0" min="0" onchange="calculateDeductions()" style="max-width: 100px;">
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>その他控除2</td>
+                                <td class="text-end">
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" name="other_deduction_2_name" class="form-control" placeholder="控除名" style="min-width: 120px;">
+                                        <span class="input-group-text">¥</span>
+                                        <input type="number" name="other_deduction_2" class="form-control text-end" 
+                                               value="0" min="0" onchange="calculateDeductions()" style="max-width: 100px;">
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between fw-bold text-danger">
+                            <span>総控除額</span>
+                            <span id="total_deductions">¥0</span>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between fw-bold fs-5 text-success">
+                            <span>差引支給額（手取額）</span>
+                            <span id="net_salary">¥{{ "{:,}".format(payroll_calculation.gross_salary) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 勤怠情報 -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-clock me-2"></i>勤怠情報
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <td>出勤日数</td>
+                                <td class="text-end">{{ (payroll_calculation.regular_working_minutes // 450) if payroll_calculation.regular_working_minutes else 0 }}日</td>
+                            </tr>
+                            <tr>
+                                <td>法定内労働時間</td>
+                                <td class="text-end">{{ "{}:{:02d}".format((payroll_calculation.regular_working_minutes//60) if payroll_calculation.regular_working_minutes else 0, (payroll_calculation.regular_working_minutes%60) if payroll_calculation.regular_working_minutes else 0) }}</td>
+                            </tr>
+                            <tr>
+                                <td>法定外労働時間</td>
+                                <td class="text-end">{{ "{}:{:02d}".format((payroll_calculation.overtime_minutes//60) if payroll_calculation.overtime_minutes else 0, (payroll_calculation.overtime_minutes%60) if payroll_calculation.overtime_minutes else 0) }}</td>
+                            </tr>
+                            {% if payroll_calculation.paid_leave_days > 0 %}
+                            <tr>
+                                <td>有給休暇</td>
+                                <td class="text-end">{{ payroll_calculation.paid_leave_days }}日</td>
+                            </tr>
+                            {% endif %}
+                            {% if payroll_calculation.absence_days > 0 %}
+                            <tr>
+                                <td>欠勤日数</td>
+                                <td class="text-end">{{ payroll_calculation.absence_days }}日</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 備考 -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-chat-text me-2"></i>備考
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <textarea name="remarks" class="form-control" rows="5" placeholder="備考を入力してください">{{ existing_slip.remarks if existing_slip else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 保存ボタン -->
+        <div class="row">
+            <div class="col-12">
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="button" class="btn btn-outline-secondary me-md-2" onclick="history.back()">
+                        <i class="bi bi-x-circle me-1"></i>キャンセル
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-file-earmark-text me-1"></i>給与明細書作成
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+// 社会保険料率（設定から取得）
+const healthInsuranceRate = {{ payroll_settings.health_insurance_rate if payroll_settings else 4.95 }};
+const pensionInsuranceRate = {{ payroll_settings.pension_insurance_rate if payroll_settings else 9.15 }};
+const employmentInsuranceRate = {{ payroll_settings.employment_insurance_rate if payroll_settings else 0.3 }};
+const longTermCareInsuranceRate = {{ payroll_settings.long_term_care_insurance_rate if payroll_settings else 0.58 }};
+
+// 固定控除額（設定から取得）
+const unionFee = {{ payroll_settings.union_fee if payroll_settings else 0 }};
+const parkingFee = {{ payroll_settings.parking_fee if payroll_settings else 0 }};
+const uniformFee = {{ payroll_settings.uniform_fee if payroll_settings else 0 }};
+
+function calculateDeductions() {
+    // 基本給与項目の合計
+    const baseSalary = {{ payroll_calculation.base_salary }};
+    const overtimeAllowance = {{ payroll_calculation.overtime_allowance or 0 }};
+    const holidayAllowance = {{ payroll_calculation.holiday_allowance or 0 }};
+    const nightAllowance = {{ payroll_calculation.night_allowance or 0 }};
+    const positionAllowance = {{ payroll_settings.position_allowance if payroll_settings else 0 }};
+    const familyAllowance = {{ payroll_settings.family_allowance if payroll_settings else 0 }};
+    const transportationAllowance = {{ payroll_settings.transportation_allowance if payroll_settings else 0 }};
+    const housingAllowance = {{ payroll_settings.housing_allowance if payroll_settings else 0 }};
+    const mealAllowance = {{ payroll_settings.meal_allowance if payroll_settings else 0 }};
+    const skillAllowance = {{ payroll_settings.skill_allowance if payroll_settings else 0 }};
+    // 新しい支給項目3つ
+    const temporaryClosureCompensation = parseInt(document.querySelector('input[name="temporary_closure_compensation"]').value) || 0;
+    const salaryPayment = parseInt(document.querySelector('input[name="salary_payment"]').value) || 0;
+    const bonusPayment = parseInt(document.querySelector('input[name="bonus_payment"]').value) || 0;
+    // その他手当5つの合計
+    const otherAllowance1 = parseInt(document.querySelector('input[name="other_allowance_1"]').value) || 0;
+    const otherAllowance2 = parseInt(document.querySelector('input[name="other_allowance_2"]').value) || 0;
+    const otherAllowance3 = parseInt(document.querySelector('input[name="other_allowance_3"]').value) || 0;
+    const otherAllowance4 = parseInt(document.querySelector('input[name="other_allowance_4"]').value) || 0;
+    const otherAllowance5 = parseInt(document.querySelector('input[name="other_allowance_5"]').value) || 0;
+    const otherAllowance = otherAllowance1 + otherAllowance2 + otherAllowance3 + otherAllowance4 + 
+                          otherAllowance5;
+    
+    const grossSalary = baseSalary + overtimeAllowance + holidayAllowance + nightAllowance +
+                       positionAllowance + familyAllowance + transportationAllowance +
+                       housingAllowance + mealAllowance + skillAllowance + 
+                       temporaryClosureCompensation + salaryPayment + bonusPayment + otherAllowance;
+    
+    // 社会保険料計算
+    const healthInsurance = Math.floor(grossSalary * (healthInsuranceRate / 100));
+    const pensionInsurance = Math.floor(grossSalary * (pensionInsuranceRate / 100));
+    const employmentInsurance = Math.floor(grossSalary * (employmentInsuranceRate / 100));
+    
+    // 年齢による介護保険料
+    const employeeAge = {{ (2024 - employee.birth_date.year) if employee.birth_date else 0 }};
+    const longTermCareInsurance = employeeAge >= 40 ? Math.floor(grossSalary * (longTermCareInsuranceRate / 100)) : 0;
+    
+    // 所得税計算
+    let incomeTax;
+    const isAutoIncomeTax = {{ 'true' if payroll_settings and payroll_settings.income_tax_type == 'automatic' else 'false' }};
+    
+    if (isAutoIncomeTax) {
+        // 自動計算
+        if (grossSalary <= 88000) {
+            incomeTax = 0;
+        } else if (grossSalary <= 162500) {
+            incomeTax = Math.floor((grossSalary - 88000) * 0.05);
+        } else if (grossSalary <= 275000) {
+            incomeTax = Math.floor(3725 + (grossSalary - 162500) * 0.10);
+        } else if (grossSalary <= 383333) {
+            incomeTax = Math.floor(15000 + (grossSalary - 275000) * 0.20);
+        } else {
+            incomeTax = Math.floor(36666 + (grossSalary - 383333) * 0.23);
+        }
+        document.querySelector('input[name="income_tax"]').value = incomeTax;
+    } else {
+        // 手動入力
+        incomeTax = parseInt(document.querySelector('input[name="income_tax"]').value) || 0;
+    }
+    
+    const residentTax = parseInt(document.querySelector('input[name="resident_tax"]').value) || 0;
+    
+    // その他控除2つの合計
+    const otherDeduction1 = parseInt(document.querySelector('input[name="other_deduction_1"]').value) || 0;
+    const otherDeduction2 = parseInt(document.querySelector('input[name="other_deduction_2"]').value) || 0;
+    const otherDeduction = otherDeduction1 + otherDeduction2;
+    
+    // 総控除額
+    const totalDeductions = healthInsurance + pensionInsurance + employmentInsurance + longTermCareInsurance +
+                           incomeTax + residentTax + unionFee + parkingFee + uniformFee + otherDeduction;
+    
+    // 手取額
+    const netSalary = grossSalary - totalDeductions;
+    
+    // 表示更新
+    document.getElementById('total_gross').textContent = '¥' + grossSalary.toLocaleString();
+    document.getElementById('health_insurance').textContent = '¥' + healthInsurance.toLocaleString();
+    document.getElementById('pension_insurance').textContent = '¥' + pensionInsurance.toLocaleString();
+    document.getElementById('employment_insurance').textContent = '¥' + employmentInsurance.toLocaleString();
+    
+    const longTermCareElement = document.getElementById('long_term_care_insurance');
+    if (longTermCareElement) {
+        longTermCareElement.textContent = '¥' + longTermCareInsurance.toLocaleString();
+    }
+    
+    document.getElementById('total_deductions').textContent = '¥' + totalDeductions.toLocaleString();
+    document.getElementById('net_salary').textContent = '¥' + netSalary.toLocaleString();
+}
+
+// ページ読み込み時と入力変更時に計算実行
+document.addEventListener('DOMContentLoaded', function() {
+    calculateDeductions();
+    
+    // 新しい支給項目の変更時も再計算
+    document.querySelector('input[name="temporary_closure_compensation"]').addEventListener('change', calculateDeductions);
+    document.querySelector('input[name="salary_payment"]').addEventListener('change', calculateDeductions);
+    document.querySelector('input[name="bonus_payment"]').addEventListener('change', calculateDeductions);
+    
+    // その他手当・控除の変更時も再計算
+    for (let i = 1; i <= 5; i++) {  // 5項目に変更
+        document.querySelector(`input[name="other_allowance_${i}"]`).addEventListener('change', calculateDeductions);
+    }
+    for (let i = 1; i <= 2; i++) {
+        document.querySelector(`input[name="other_deduction_${i}"]`).addEventListener('change', calculateDeductions);
+    }
+});
+
+// 休業補償計算関数
+function calculateClosureCompensation() {
+    const days = parseInt(document.getElementById('closure_days').value) || 0;
+    const percentage = parseInt(document.getElementById('closure_percentage').value) || 60;
+    const baseSalary = {{ payroll_calculation.base_salary }};
+    
+    // 月の労働日数（平均22日として計算）
+    const monthlyWorkingDays = 22;
+    
+    // 日給を計算（基本給 ÷ 月平均労働日数）
+    const dailyWage = baseSalary / monthlyWorkingDays;
+    
+    // 休業補償金額を計算（日給 × 日数 × 割合）
+    const compensationAmount = Math.floor(dailyWage * days * (percentage / 100));
+    
+    // 結果を表示
+    document.getElementById('temporary_closure_compensation').value = compensationAmount;
+    
+    // 総支給額も再計算
+    calculateDeductions();
+}
+</script>
+{% endblock %}

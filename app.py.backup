@@ -1,0 +1,2132 @@
+from flask import Flask, render_template, redirect, url_for, request, flash, make_response
+# Flask-Login: User session management for Flask
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+import os
+import uuid
+import io
+from io import BytesIO
+from reportlab.lib.pagesizes import A4, letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm, inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, PageBreak
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.utils import ImageReader
+from weasyprint import HTML, CSS
+from models import (db, User, Employee, LeaveCredit, LeaveRecord, 
+                    CompanyCalendar, CalendarSettings, LeaveRequest, PersonalInfoRequest)
+from datetime import date, datetime, timedelta
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your_secret_key'  # 必ず後で変更してください
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///employees.db'
+
+# 画像アップロード用の設定
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_RESIDENCE_CARD_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
+ALLOWED_CAR_INSURANCE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# アップロードフォルダが存在しない場合は作成
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# データベース初期化
+db.init_app(app)
+
+# Login Manager初期化
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+# 年次有給休暇の自動付与ロジック
+def calculate_annual_leave_days(join_date, current_date=None):
+    """
+    日本の労働基準法に基づく年次有給休暇の付与日数を計算
+    
+    労働基準法第39条に基づく：
+    - 6ヶ月継続勤務：10日付与
+    - 1年6ヶ月継続勤務：11日付与
+    - 2年6ヶ月継続勤務：12日付与
+    - 以降1年ごとに1日追加（最大20日）
+    """
+    if current_date is None:
+        current_date = date.today()
+    
+    # 入社日から現在までの勤続期間を計算
+    years_of_service = (current_date - join_date).days / 365.25
+    
+    if years_of_service < 0.5:  # 6ヶ月未満
+        return 0
+    elif years_of_service < 1.5:  # 6ヶ月〜1年6ヶ月未満
+        return 10
+    elif years_of_service < 2.5:  # 1年6ヶ月〜2年6ヶ月未満
+        return 11
+    else:  # 2年6ヶ月以降
+        # 2年6ヶ月以降は1年ごとに1日追加（最大20日）
+        additional_days = min(int(years_of_service - 2.5), 8)  # 最大8日追加
+        return 12 + additional_days
+
+def should_auto_grant_leave(employee, current_date=None):
+    """
+    年次有給休暇の自動付与が必要かどうかを判定
+    入社から6ヶ月経過時点から自動付与可能
+    """
+    if current_date is None:
+        current_date = date.today()
+    
+    # 入社日がNoneの場合は付与しない
+    if not employee.join_date:
+        return False
+    
+    # 入社日から6ヶ月経過しているかチェック
+    days_since_join = (current_date - employee.join_date).days
+    
+    if days_since_join < 182:  # 約6ヶ月 (182日)
+        return False
+    
+    # 前回の自動付与日をチェック
+    last_auto_grant = db.session.query(LeaveCredit)\
+        .filter(LeaveCredit.employee_id == employee.id)\
+        .order_by(LeaveCredit.date_credited.desc())\
+        .first()
+    
+    # 初回付与（6ヶ月経過時点）の場合
+    if not last_auto_grant:
+        return days_since_join >= 182  # 6ヶ月経過していれば付与
+    
+    # 2回目以降の付与（前回から1年経過）の場合
+    days_since_last_grant = (current_date - last_auto_grant.date_credited).days
+    if days_since_last_grant >= 365:  # 1年経過していれば付与
+        return True
+    
+    return False
+
+@app.route('/auto_grant_annual_leave', methods=['GET', 'POST'])
+@login_required
+def auto_grant_annual_leave():
+    # ... 関数の処理 ...
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('leave_management'))
+    
+    try:
+        current_date = date.today()
+        granted_count = 0
+        
+        # 全従業員をチェック
+        employees = Employee.query.filter_by(status='在籍中').all()
+        
+        for employee in employees:
+            if should_auto_grant_leave(employee, current_date):
+                # 法律に基づく付与日数を計算
+                days_to_grant = calculate_annual_leave_days(employee.join_date, current_date)
+                
+                if days_to_grant > 0:
+                    # 自動付与を記録
+                    new_leave_credit = LeaveCredit(
+                        employee_id=employee.id,
+                        days_credited=days_to_grant,
+                        date_credited=current_date
+                    )
+                    
+                    db.session.add(new_leave_credit)
+                    granted_count += 1
+        
+        if granted_count > 0:
+            db.session.commit()
+            flash(f'{granted_count}名の従業員に年次有給休暇を自動付与しました。')
+        else:
+            flash('自動付与対象の従業員はいませんでした。')
+            
+    except Exception:
+        db.session.rollback()
+        flash('自動付与処理中にエラーが発生しました。')
+    
+    return redirect(url_for('leave_management'))
+
+
+def allowed_file(filename):
+    """アップロードされたファイルの拡張子をチェック"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def save_photo(file):
+    """アップロードされた画像ファイルを安全に保存"""
+    if file and file.filename and allowed_file(file.filename):
+        # 安全なファイル名を生成（UUID + 元の拡張子）
+        file_extension = file.filename.rsplit('.', 1)[1].lower()
+        safe_filename = f"{uuid.uuid4().hex}.{file_extension}"
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
+        file.save(file_path)
+        return safe_filename
+    return None
+
+def allowed_residence_card_file(filename):
+    """在留カードファイルの拡張子をチェック"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_RESIDENCE_CARD_EXTENSIONS
+
+def save_residence_card_file(file):
+    """アップロードされた在留カードファイルを安全に保存"""
+    if file and file.filename and allowed_residence_card_file(file.filename):
+        # 安全なファイル名を生成（UUID + 元の拡張子）
+        file_extension = file.filename.rsplit('.', 1)[1].lower()
+        safe_filename = f"residence_card_{uuid.uuid4().hex}.{file_extension}"
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
+        file.save(file_path)
+        return safe_filename
+    return None
+
+def allowed_car_insurance_file(filename):
+    """自動車保険証ファイルの拡張子をチェック"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_CAR_INSURANCE_EXTENSIONS
+
+def save_car_insurance_file(file):
+    """アップロードされた自動車保険証ファイルを安全に保存"""
+    if file and file.filename and allowed_car_insurance_file(file.filename):
+        # 安全なファイル名を生成（UUID + 元の拡張子）
+        file_extension = file.filename.rsplit('.', 1)[1].lower()
+        safe_filename = f"car_insurance_{uuid.uuid4().hex}.{file_extension}"
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
+        file.save(file_path)
+        return safe_filename
+    return None
+
+def get_calendar_setting(key, default_value=None):
+    """カレンダー設定を取得"""
+    setting = CalendarSettings.query.filter_by(setting_key=key).first()
+    return setting.setting_value if setting else default_value
+
+def set_calendar_setting(key, value, description=None):
+    """カレンダー設定を保存"""
+    setting = CalendarSettings.query.filter_by(setting_key=key).first()
+    if setting:
+        setting.setting_value = value
+        setting.updated_at = date.today()
+        if description:
+            setting.description = description
+    else:
+        setting = CalendarSettings(
+            setting_key=key,
+            setting_value=value,
+            description=description
+        )
+        db.session.add(setting)
+    db.session.commit()
+
+def setup_japanese_font():
+    """日本語フォント設定の共通関数 - 改良版"""
+    
+    # 日本語対応フォントを優先順位順に試行
+    font_configs = [
+        # Noto Sans CJK（最も確実な日本語フォント）
+        {
+            'paths': [
+                '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+                '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+                '/System/Library/Fonts/Supplemental/NotoSansCJKjp-Regular.otf'
+            ],
+            'regular': 'NotoSansCJK-Regular',
+            'bold': 'NotoSansCJK-Bold'
+        },
+        
+        # IPAexフォント（日本語専用）
+        {
+            'paths': [
+                '/usr/share/fonts/truetype/fonts-japanese-gothic.ttf',
+                '/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf'
+            ],
+            'regular': 'IPAGothic',
+            'bold': 'IPAGothic'
+        },
+        
+        # Source Han Sans（Adobe）
+        {
+            'paths': ['/usr/share/fonts/opentype/source-han-sans/SourceHanSansJP-Regular.otf'],
+            'regular': 'SourceHanSansJP',
+            'bold': 'SourceHanSansJP'
+        }
+    ]
+    
+    # フォントを順番に試行
+    for config in font_configs:
+        for font_path in config['paths']:
+            try:
+                # レギュラーフォント登録
+                pdfmetrics.registerFont(TTFont(config['regular'], font_path))
+                
+                # ボールドフォント登録（ボールド版が存在する場合）
+                bold_path = font_path.replace('Regular', 'Bold').replace('regular', 'bold')
+                try:
+                    if bold_path != font_path:
+                        pdfmetrics.registerFont(TTFont(config['bold'], bold_path))
+                    else:
+                        # ボールド版がない場合はレギュラーを使用
+                        config['bold'] = config['regular']
+                except:
+                    config['bold'] = config['regular']
+                
+                print(f"日本語フォント設定成功: {config['regular']}, {config['bold']}")
+                return config['regular'], config['bold']
+                
+            except Exception as e:
+                continue
+    
+    # フォールバック1: DejaVu Sans（基本的な文字をサポート）
+    try:
+        pdfmetrics.registerFont(TTFont('DejaVuSans', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'))
+        pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'))
+        print("フォールバック: DejaVuSans使用")
+        return 'DejaVuSans', 'DejaVuSans-Bold'
+    except:
+        pass
+    
+    # フォールバック2: Ubuntu フォント（一部日本語文字サポート）
+    try:
+        # 実在するUbuntuフォントファイル
+        pdfmetrics.registerFont(TTFont('Ubuntu', '/usr/share/fonts/truetype/ubuntu/Ubuntu[wdth,wght].ttf'))
+        # ボールドも同じファイルから取得（Variable Font）
+        pdfmetrics.registerFont(TTFont('Ubuntu-Bold', '/usr/share/fonts/truetype/ubuntu/Ubuntu[wdth,wght].ttf'))
+        print("フォールバック: Ubuntuフォント使用（日本語の一部をサポート）")
+        return 'Ubuntu', 'Ubuntu-Bold'
+    except Exception as e:
+        print(f"Ubuntuフォント読み込み失敗: {e}")
+        pass
+    
+    # フォールバック3: Liberation フォント
+    try:
+        pdfmetrics.registerFont(TTFont('LiberationSans', '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'))
+        pdfmetrics.registerFont(TTFont('LiberationSans-Bold', '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'))
+        print("フォールバック: Liberationフォント使用")
+        return 'LiberationSans', 'LiberationSans-Bold'
+    except:
+        pass
+    
+    # 最終フォールバック: ReportLab内蔵のTimes-Roman
+    try:
+        print("最終フォールバック: Times-Roman使用（日本語は表示されない可能性があります）")
+        return 'Times-Roman', 'Times-Bold'
+    except:
+        # 究極のフォールバック
+        print("警告: フォント設定に失敗。Helveticaを使用します。")
+        return 'Helvetica', 'Helvetica-Bold'
+
+def create_employee_pdf(employee):
+    """従業員情報のPDFを生成 - WeasyPrint版（HTML→PDF変換）"""
+    
+    # 年休データを計算
+    total_credited = db.session.query(db.func.sum(LeaveCredit.days_credited))\
+                               .filter_by(employee_id=employee.id).scalar() or 0
+    total_taken = db.session.query(db.func.sum(LeaveRecord.days_taken))\
+                            .filter_by(employee_id=employee.id).scalar() or 0
+    remaining_leave = total_credited - total_taken
+    
+    # フォント候補を順番に試行
+    font_candidates = [
+        # Ubuntu フォント（Variable Font対応）
+        ('Ubuntu', 'Ubuntu-Bold', '/usr/share/fonts/truetype/ubuntu/Ubuntu[wdth,wght].ttf', '/usr/share/fonts/truetype/ubuntu/Ubuntu[wdth,wght].ttf'),
+        # DejaVu Sans フォント
+        ('DejaVuSans', 'DejaVuSans-Bold', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
+    ]
+    
+    for regular_name, bold_name, regular_path, bold_path in font_candidates:
+        try:
+            pdfmetrics.registerFont(TTFont(regular_name, regular_path))
+            pdfmetrics.registerFont(TTFont(bold_name, bold_path))
+            japanese_font = regular_name
+            japanese_font_bold = bold_name
+            print(f"従業員PDF用に{regular_name}フォント登録完了")
+            break
+        except Exception as e:
+            print(f"{regular_name}フォント登録失敗: {e}")
+            continue
+    
+    # すべて失敗した場合のフォールバック
+    if japanese_font is None:
+        print("全フォント登録失敗、setup_japanese_font()使用")
+        japanese_font, japanese_font_bold = setup_japanese_font()
+    
+    # PDFドキュメントを作成
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    styles = getSampleStyleSheet()
+    story = []
+    
+    # タイトル
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        spaceAfter=30,
+        alignment=1,  # 中央揃え
+        fontName=japanese_font_bold
+    )
+    title = Paragraph(f"従業員情報 - {employee.name}", title_style)
+    story.append(title)
+    story.append(Spacer(1, 12))
+    
+    # 基本情報テーブル
+    data = [
+        ['項目', '内容'],
+        ['氏名', employee.name],
+        ['生年月日', employee.birth_date.strftime('%Y年%m月%d日') if employee.birth_date else '未設定'],
+        ['性別', employee.gender or '未設定'],
+        ['国籍', employee.nationality or '未設定'],
+        ['入社日', employee.join_date.strftime('%Y年%m月%d日')],
+        ['在籍状況', employee.status],
+        ['電話番号', employee.phone_number or '未設定'],
+        ['住所', employee.address or '未設定'],
+        ['在留カード期限', employee.residence_card_expiry.strftime('%Y年%m月%d日') if employee.residence_card_expiry else '未設定'],
+        ['自動車保険期限', employee.car_insurance_expiry.strftime('%Y年%m月%d日') if employee.car_insurance_expiry else '未設定'],
+    ]
+    
+    table = Table(data, colWidths=[4*inch, 4*inch])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), japanese_font_bold),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('FONTNAME', (0, 1), (-1, -1), japanese_font),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+    ]))
+    
+    story.append(table)
+    story.append(Spacer(1, 20))
+    
+    # 年次有給休暇情報
+    # 年休合計計算
+    total_credited = db.session.query(db.func.sum(LeaveCredit.days_credited))\
+        .filter(LeaveCredit.employee_id == employee.id)\
+        .scalar() or 0
+    
+    total_taken = db.session.query(db.func.sum(LeaveRecord.days_taken))\
+        .filter(LeaveRecord.employee_id == employee.id)\
+        .scalar() or 0
+    
+    remaining_leave = total_credited - total_taken
+    
+    # 法律に基づく付与日数
+    if employee.join_date:
+        legal_leave_days = calculate_annual_leave_days(employee.join_date)
+    else:
+        legal_leave_days = 0
+    
+    # 年休情報セクション
+    leave_title_style = ParagraphStyle(
+        'LeaveTitle',
+        parent=styles['Heading2'],
+        fontName=japanese_font_bold
+    )
+    leave_title = Paragraph("年次有給休暇情報", leave_title_style)
+    story.append(leave_title)
+    story.append(Spacer(1, 12))
+    
+    leave_data = [
+        ['項目', '日数'],
+        ['付与日数合計', f'{total_credited}日'],
+        ['取得日数合計', f'{total_taken}日'],
+        ['残日数', f'{remaining_leave}日'],
+        ['法定付与日数', f'{legal_leave_days}日'],
+    ]
+    
+    leave_table = Table(leave_data, colWidths=[4*inch, 2*inch])
+    leave_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), japanese_font_bold),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.lightcyan),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('FONTNAME', (0, 1), (-1, -1), japanese_font),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+    ]))
+    
+    story.append(leave_table)
+    
+    # 年休付与履歴
+    leave_credits = LeaveCredit.query.filter_by(employee_id=employee.id).order_by(LeaveCredit.date_credited.desc()).all()
+    if leave_credits:
+        story.append(Spacer(1, 20))
+        credit_title_style = ParagraphStyle('CreditTitle', parent=styles['Heading3'], fontName=japanese_font_bold)
+        credit_title = Paragraph("年休付与履歴", credit_title_style)
+        story.append(credit_title)
+        story.append(Spacer(1, 12))
+        
+        credit_data = [['付与日', '付与日数']]
+        for credit in leave_credits:
+            credit_data.append([
+                credit.date_credited.strftime('%Y/%m/%d'),
+                f'{credit.days_credited}日'
+            ])
+        
+        credit_table = Table(credit_data, colWidths=[3*inch, 2*inch])
+        credit_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), japanese_font_bold),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), japanese_font),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ]))
+        story.append(credit_table)
+    
+    # 年休取得履歴
+    leave_records = LeaveRecord.query.filter_by(employee_id=employee.id).order_by(LeaveRecord.date_taken.desc()).all()
+    if leave_records:
+        story.append(Spacer(1, 20))
+        record_title_style = ParagraphStyle('RecordTitle', parent=styles['Heading3'], fontName=japanese_font_bold)
+        record_title = Paragraph("年休取得履歴", record_title_style)
+        story.append(record_title)
+        story.append(Spacer(1, 12))
+        
+        record_data = [['取得日', '取得日数']]
+        for record in leave_records:
+            record_data.append([
+                record.date_taken.strftime('%Y/%m/%d'),
+                f'{record.days_taken}日'
+            ])
+        
+        record_table = Table(record_data, colWidths=[3*inch, 2*inch])
+        record_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), japanese_font_bold),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), japanese_font),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ]))
+        story.append(record_table)
+    
+    # PDFを生成
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+def create_calendar_pdf():
+    """会社カレンダーのPDFを升目デザインで生成"""
+    buffer = BytesIO()
+    
+    # 日本語フォントを設定（複数フォントを試行）
+    japanese_font = None
+    japanese_font_bold = None
+    
+    # フォント候補を順番に試行
+    font_candidates = [
+        # Ubuntu フォント（Variable Font対応）
+        ('Ubuntu', 'Ubuntu-Bold', '/usr/share/fonts/truetype/ubuntu/Ubuntu[wdth,wght].ttf', '/usr/share/fonts/truetype/ubuntu/Ubuntu[wdth,wght].ttf'),
+        # DejaVu Sans フォント
+        ('DejaVuSans', 'DejaVuSans-Bold', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
+    ]
+    
+    for regular_name, bold_name, regular_path, bold_path in font_candidates:
+        try:
+            pdfmetrics.registerFont(TTFont(regular_name, regular_path))
+            pdfmetrics.registerFont(TTFont(bold_name, bold_path))
+            japanese_font = regular_name
+            japanese_font_bold = bold_name
+            print(f"カレンダーPDF用に{regular_name}フォント登録完了")
+            break
+        except Exception as e:
+            print(f"{regular_name}フォント登録失敗: {e}")
+            continue
+    
+    # すべて失敗した場合のフォールバック
+    if japanese_font is None:
+        print("全フォント登録失敗、setup_japanese_font()使用")
+        japanese_font, japanese_font_bold = setup_japanese_font()
+    
+    # PDFドキュメントを作成（縦向きA4）
+    doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                           topMargin=15*mm, bottomMargin=15*mm,
+                           leftMargin=15*mm, rightMargin=15*mm)
+    styles = getSampleStyleSheet()
+    story = []
+    
+    # タイトル（コンパクトに調整）
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontName=japanese_font_bold,
+        fontSize=14,  # サイズを小さく
+        spaceAfter=3,  # 下余白を大幅削減
+        alignment=1  # 中央揃え
+    )
+    
+    current_year = datetime.now().year
+    title = Paragraph(f"{current_year}年 会社カレンダー", title_style)
+    story.append(title)
+    story.append(Spacer(1, 2))  # タイトル後のスペースも削減
+    
+    # カレンダー開始月設定を取得
+    start_month = int(get_calendar_setting('start_month', '1'))
+    
+    # 年間カレンダーデータを生成
+    calendar_data = generate_year_calendar(current_year, start_month)
+    
+    # 12ヶ月を確実に1ページに収める3x4レイアウト（上に詰める）
+    # ページサイズとマージンの計算
+    page_width = A4[0]  # 210mm
+    page_height = A4[1]  # 297mm
+    
+    # マージンを最小限に設定（確実に1Pに収める）
+    top_margin = 2*mm  # 上余白を最小に
+    bottom_margin = 2*mm  
+    left_margin = 5*mm
+    right_margin = 5*mm
+    title_space = 3*mm  # タイトル用スペースを極小に
+    
+    usable_width = page_width - left_margin - right_margin  # 200mm
+    usable_height = page_height - top_margin - bottom_margin - title_space  # 290mm
+    
+    # 月間の間隔設定（密着しない最小限の間隔）
+    month_h_spacing = 2.5*mm  # 横間隔（2.5mm = 約7px）
+    month_v_spacing = 1.5*mm  # 縦間隔（1.5mm = 約4.2px）
+    
+    # 各月に割り当てられるスペース計算
+    available_width_per_month = (usable_width - 2 * month_h_spacing) / 3  # (200-5)/3 = 65mm
+    available_height_per_month = (usable_height - 3 * month_v_spacing) / 4  # (290-4.5)/4 = 71.4mm
+    
+    # 月タイトル用スペース
+    month_title_height = 3.5*mm
+    
+    # カレンダーのセルサイズ計算（縦横最低値を取って正方形に近づける）
+    max_cell_width = available_width_per_month / 7  # 9.29mm
+    max_cell_height = (available_height_per_month - month_title_height) / 7  # 9.70mm
+    
+    # 正方形に近づけるため小さい方を採用
+    cell_size = min(max_cell_width, max_cell_height, 9*mm)  # 最大9mmで制限
+    
+    # 実際の月カレンダーサイズ（セル高さ調整を反映）
+    actual_month_width = cell_size * 7
+    actual_month_height = cell_size * 0.5 + cell_size * 1.1 * 6 + month_title_height  # ヘッダー0.5 + 本文1.1×6
+    
+    # デバッグ情報表示
+    total_needed_height = actual_month_height * 4 + month_v_spacing * 3
+    print(f"Debug: cell_size={cell_size/mm:.2f}mm, month_size={actual_month_width/mm:.1f}x{actual_month_height/mm:.1f}mm")
+    print(f"Debug: total_needed_height={total_needed_height/mm:.1f}mm, available={usable_height/mm:.1f}mm")
+    
+    for row_idx in range(4):  # 4行
+        row_elements = []
+        
+        for col_idx in range(3):  # 3列
+            month_idx = row_idx * 3 + col_idx
+            if month_idx >= len(calendar_data):
+                # 空セルで埋める
+                row_elements.append(Spacer(actual_month_width, actual_month_height))
+                continue
+            
+            month_data = calendar_data[month_idx]
+            
+            # 月のテーブルデータを作成
+            month_table_data = []
+            
+            # 曜日ヘッダー
+            month_table_data.append(['日', '月', '火', '水', '木', '金', '土'])
+            
+            # 各週のデータ
+            for week in month_data['weeks']:
+                week_row = []
+                for day_data in week:
+                    if day_data['day']:
+                        # 日付とイベントを分離して配置（日付：上部、イベント：中央から下部）
+                        day_number = str(day_data['day'])
+                        
+                        if day_data['events']:
+                            # 複数イベントがある場合は最も重要なものを選択
+                            event = day_data['events'][0]
+                            title = event.title
+                            
+                            # イベント名の表示を改善（行間を狭くして表示）
+                            if len(title) <= 4:
+                                # 4文字以下はそのまま表示
+                                display_title = title
+                            elif len(title) <= 8:
+                                # 8文字以下は行間を狭くして2行表示
+                                display_title = title[:4] + '<br/>' + title[4:]
+                            else:
+                                # 9文字以上は行間を狭くして2行で省略
+                                display_title = title[:4] + '<br/>' + title[4:7] + '..'
+                            
+                            # 日付とイベント名を分離して配置
+                            day_content = day_number + '\n' + display_title
+                        else:
+                            day_content = day_number
+                    else:
+                        day_content = ''
+                    week_row.append(day_content)
+                month_table_data.append(week_row)
+            
+            # 週数を6週に固定
+            while len(month_table_data) - 1 < 6:
+                month_table_data.append(['', '', '', '', '', '', ''])
+            
+            # カレンダーテーブル作成（セル高さを調整して日付とイベントを分離表示）
+            month_table = Table(month_table_data, 
+                               colWidths=[cell_size] * 7,
+                               rowHeights=[cell_size * 0.5] + [cell_size * 1.1] * 6)  # ヘッダー行を少し高くして見切れ防止
+            
+            # テーブルスタイル
+            table_styles = [
+                ('GRID', (0, 0), (-1, -1), 0.3, colors.black),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+                ('FONTNAME', (0, 0), (-1, 0), japanese_font_bold),
+                ('FONTSIZE', (0, 0), (-1, 0), 4),  # ヘッダーフォントサイズを適度に調整
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, 0), 'MIDDLE'),
+                ('FONTNAME', (0, 1), (-1, -1), japanese_font),
+                ('FONTSIZE', (0, 1), (-1, -1), 3),  # 本文フォントサイズを少し見やすく
+                ('ALIGN', (0, 1), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 1), (-1, -1), 'MIDDLE'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0.5),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0.5),
+                ('TOPPADDING', (0, 0), (-1, -1), 0.5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0.5),
+            ]
+            
+            # 背景色設定
+            for week_idx, week in enumerate(month_data['weeks']):
+                for day_idx, day_data in enumerate(week):
+                    row = week_idx + 1
+                    col = day_idx
+                    
+                    if day_data['day']:
+                        # 日曜日・土曜日の基本色
+                        if day_idx == 0:  # 日曜日
+                            table_styles.append(('TEXTCOLOR', (col, row), (col, row), colors.red))
+                            table_styles.append(('BACKGROUND', (col, row), (col, row), colors.mistyrose))
+                        elif day_idx == 6:  # 土曜日
+                            table_styles.append(('TEXTCOLOR', (col, row), (col, row), colors.blue))
+                            table_styles.append(('BACKGROUND', (col, row), (col, row), colors.lightcyan))
+                        
+                        # イベントがある場合は背景色を上書き
+                        if day_data['events']:
+                            for event in day_data['events']:
+                                if event.event_type in ['holiday', 'company_holiday']:
+                                    table_styles.append(('BACKGROUND', (col, row), (col, row), colors.mistyrose))
+                                    table_styles.append(('TEXTCOLOR', (col, row), (col, row), colors.red))
+                                elif event.event_type == 'vacation':
+                                    table_styles.append(('BACKGROUND', (col, row), (col, row), colors.lightgreen))
+                                    table_styles.append(('TEXTCOLOR', (col, row), (col, row), colors.darkgreen))
+                                else:
+                                    table_styles.append(('BACKGROUND', (col, row), (col, row), colors.lightyellow))
+            
+            month_table.setStyle(TableStyle(table_styles))
+            
+            # 月タイトルを作成（小さめのフォント）
+            month_title_style = ParagraphStyle(
+                'MonthTitle',
+                parent=styles['Heading3'],
+                fontName=japanese_font_bold,
+                fontSize=5,  # 固定で小さめ
+                spaceAfter=0,
+                spaceBefore=0,
+                alignment=1
+            )
+            month_title = Paragraph(f"{month_data['display_year']}年{month_data['month']}月", month_title_style)
+            
+            # 月タイトルとカレンダーを組み合わせ（コンパクトに）
+            month_content = [
+                [month_title],
+                [month_table]
+            ]
+            month_wrapper = Table(month_content, 
+                                colWidths=[actual_month_width],
+                                rowHeights=[month_title_height, actual_month_height - month_title_height])
+            month_wrapper.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]))
+            
+            row_elements.append(month_wrapper)
+        
+        # 行テーブルを作成（間隔を確実に設ける）
+        if len(row_elements) == 1:
+            # 1個のみの場合（通常はありえない）
+            row_elements.extend([Spacer(month_h_spacing, actual_month_height), 
+                               Spacer(actual_month_width, actual_month_height),
+                               Spacer(month_h_spacing, actual_month_height),
+                               Spacer(actual_month_width, actual_month_height)])
+        elif len(row_elements) == 2:
+            # 2個の場合
+            row_elements.extend([Spacer(month_h_spacing, actual_month_height), 
+                               Spacer(actual_month_width, actual_month_height)])
+        elif len(row_elements) == 3:
+            # 3個の場合（正常） - 間にスペーサーを挿入
+            new_row_elements = [
+                row_elements[0],
+                Spacer(month_h_spacing, actual_month_height),
+                row_elements[1], 
+                Spacer(month_h_spacing, actual_month_height),
+                row_elements[2]
+            ]
+            row_elements = new_row_elements
+        
+        # 各要素の幅を計算
+        col_widths = []
+        for i, element in enumerate(row_elements):
+            if i % 2 == 0:  # カレンダー要素
+                col_widths.append(actual_month_width)
+            else:  # スペーサー要素
+                col_widths.append(month_h_spacing)
+        
+        row_table = Table([row_elements], 
+                         colWidths=col_widths,
+                         rowHeights=[actual_month_height])
+        row_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        
+        story.append(row_table)
+        
+        # 行間スペース（最後の行以外）
+        if row_idx < 3:
+            story.append(Spacer(1, month_v_spacing))
+    
+    # 改ページして2ページ目へ
+    story.append(PageBreak())
+    
+    # イベント一覧を追加
+    events = CompanyCalendar.query.filter(
+        db.or_(
+            db.extract('year', CompanyCalendar.event_date) == current_year,
+            CompanyCalendar.is_recurring == True
+        )
+    ).order_by(CompanyCalendar.event_date.asc()).all()
+    
+    if events:
+        event_title_style = ParagraphStyle(
+            'EventTitle',
+            parent=styles['Heading2'],
+            fontName=japanese_font_bold,
+            fontSize=16,
+            spaceAfter=10
+        )
+        event_title = Paragraph("年間イベント一覧", event_title_style)
+        story.append(event_title)
+        story.append(Spacer(1, 10))
+        
+        # 休日とイベントを分ける
+        holidays = []
+        company_events = []
+        
+        for event in events:
+            if event.is_recurring:
+                event_date = date(current_year, event.event_date.month, event.event_date.day)
+            else:
+                event_date = event.event_date
+                
+            if event_date.year == current_year:
+                if event.event_type == 'holiday':
+                    holidays.append((event_date, event))
+                else:
+                    company_events.append((event_date, event))
+        
+        # 休日セクション
+        if holidays:
+            holiday_title_style = ParagraphStyle(
+                'HolidayTitle',
+                parent=styles['Heading3'],
+                fontName=japanese_font_bold,
+                fontSize=12
+            )
+            holiday_title = Paragraph("休日", holiday_title_style)
+            story.append(holiday_title)
+            story.append(Spacer(1, 5))
+            
+            holiday_data = [['月日', '名称', '備考']]
+            for event_date, event in sorted(holidays):
+                holiday_data.append([
+                    event_date.strftime('%m/%d'),
+                    event.title,
+                    event.description[:20] + '...' if event.description and len(event.description) > 20 else (event.description or '')
+                ])
+            
+            holiday_table = Table(holiday_data, colWidths=[25*mm, 60*mm, 85*mm])
+            holiday_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.red),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), japanese_font_bold),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('FONTNAME', (0, 1), (-1, -1), japanese_font),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('LEFTPADDING', (0, 0), (-1, -1), 5),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+            ]))
+            story.append(holiday_table)
+            story.append(Spacer(1, 10))
+        
+        # イベントセクション
+        if company_events:
+            event_section_title_style = ParagraphStyle(
+                'EventSectionTitle',
+                parent=styles['Heading3'],
+                fontName=japanese_font_bold,
+                fontSize=12
+            )
+            event_section_title = Paragraph("会社行事・イベント", event_section_title_style)
+            story.append(event_section_title)
+            story.append(Spacer(1, 5))
+            
+            event_data = [['月日', '名称', '詳細']]
+            for event_date, event in sorted(company_events):
+                event_data.append([
+                    event_date.strftime('%m/%d'),
+                    event.title,
+                    event.description[:20] + '...' if event.description and len(event.description) > 20 else (event.description or '')
+                ])
+            
+            event_table = Table(event_data, colWidths=[25*mm, 60*mm, 85*mm])
+            event_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.blue),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), japanese_font_bold),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('FONTNAME', (0, 1), (-1, -1), japanese_font),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('LEFTPADDING', (0, 0), (-1, -1), 5),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+            ]))
+            story.append(event_table)
+    
+    # 生成日時を追加（日本語フォント使用）
+    story.append(Spacer(1, 20))
+    generation_style = ParagraphStyle(
+        'GenerationInfo',
+        parent=styles['Normal'],
+        fontName=japanese_font,
+        fontSize=9,
+        textColor=colors.grey,
+        alignment=2  # 右揃え
+    )
+    generation_info = Paragraph(
+        f"生成日時: {datetime.now().strftime('%Y年%m月%d日 %H時%M分')}", 
+        generation_style
+    )
+    story.append(generation_info)
+    
+    # PDF生成（マージンを最小限に）
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                           topMargin=top_margin, bottomMargin=bottom_margin, 
+                           leftMargin=left_margin, rightMargin=right_margin)
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+# データベースとアプリケーションを連携は既に上で完了
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# --- ここから下が各ページの処理 ---
+
+@app.route('/')
+def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    return render_template('index.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        user = User.query.filter_by(email=email).first()
+        
+        if user and check_password_hash(user.password, password):
+            login_user(user)
+            return redirect(url_for('dashboard'))
+        else:
+            flash('メールアドレスまたはパスワードが正しくありません。')
+
+    return render_template('login.html')
+
+@app.route('/employee_login', methods=['GET', 'POST'])
+def employee_login():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        employee_name = request.form.get('employee_name')
+        employee_id = request.form.get('employee_id')
+        
+        if employee_name and employee_id:
+            try:
+                employee_id_int = int(employee_id)
+                # 従業員IDと氏名で検索
+                employee = Employee.query.filter_by(id=employee_id_int, name=employee_name).first()
+                
+                if employee:
+                    # 該当する従業員ユーザーを検索
+                    user = User.query.filter_by(employee_id=employee.id, role='employee').first()
+                    if user:
+                        login_user(user)
+                        return redirect(url_for('dashboard'))
+                    else:
+                        flash('ユーザーアカウントが見つかりません。管理者にお問い合わせください。')
+                else:
+                    flash('従業員IDまたは氏名が正しくありません。')
+            except ValueError:
+                flash('従業員IDは数字で入力してください。')
+        else:
+            flash('従業員IDと氏名の両方を入力してください。')
+
+    return render_template('employee_login.html')
+
+@app.route('/admin_login', methods=['GET', 'POST'])
+def admin_login():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        user = User.query.filter_by(email=email, role='admin').first()
+        
+        if user and check_password_hash(user.password, password):
+            login_user(user)
+            return redirect(url_for('dashboard'))
+        else:
+            flash('メールアドレスまたはパスワードが正しくありません。')
+
+    return render_template('admin_login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
+
+# 従業員向け有給休暇申請機能
+@app.route('/request_leave', methods=['GET', 'POST'])
+@login_required
+def request_leave():
+    if current_user.role != 'employee':
+        flash('アクセス権がありません。')
+        return redirect(url_for('dashboard'))
+        
+    employee = Employee.query.filter_by(id=current_user.employee_id).first()
+    if not employee:
+        flash('従業員情報が見つかりません。')
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        leave_type = request.form.get('leave_type', 'annual_leave')
+        start_date_str = request.form.get('start_date')
+        end_date_str = request.form.get('end_date')
+        reason = request.form.get('reason')
+        
+        if start_date_str and end_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                
+                if start_date > end_date:
+                    flash('終了日は開始日以降を選択してください。')
+                    return render_template('leave_request.html', employee=employee)
+                
+                # 営業日数を計算（土日を除く）
+                days_requested = 0
+                current_date = start_date
+                while current_date <= end_date:
+                    if current_date.weekday() < 5:  # 月〜金（0〜4）
+                        days_requested += 1
+                    current_date += timedelta(days=1)
+                
+                # 年次有給休暇の場合のみ残日数チェック
+                if leave_type == 'annual_leave':
+                    total_credited = sum([credit.days_credited for credit in employee.leave_credits])
+                    total_taken = sum([record.days_taken for record in employee.leave_records])
+                    remaining_leave = total_credited - total_taken
+                    
+                    if days_requested > remaining_leave:
+                        flash(f'申請日数({days_requested}日)が残り有給日数({remaining_leave}日)を超えています。')
+                        return render_template('leave_request.html', employee=employee)
+                
+                leave_request = LeaveRequest(
+                    employee_id=employee.id,
+                    leave_type=leave_type,
+                    start_date=start_date,
+                    end_date=end_date,
+                    days_requested=days_requested,
+                    reason=reason
+                )
+                
+                db.session.add(leave_request)
+                db.session.commit()
+                
+                flash('有給休暇申請を提出しました。管理者の承認をお待ちください。')
+                return redirect(url_for('dashboard'))
+                
+            except ValueError:
+                flash('日付の形式が正しくありません。')
+                return render_template('leave_request.html', employee=employee)
+        else:
+            flash('開始日と終了日は必須です。')
+    
+    return render_template('leave_request.html', employee=employee)
+
+@app.route('/leave_history')
+@login_required
+def leave_history():
+    if current_user.role != 'employee':
+        flash('アクセス権がありません。')
+        return redirect(url_for('dashboard'))
+        
+    employee = Employee.query.filter_by(id=current_user.employee_id).first()
+    if not employee:
+        flash('従業員情報が見つかりません。')
+        return redirect(url_for('dashboard'))
+    
+    leave_requests = LeaveRequest.query.filter_by(employee_id=employee.id).order_by(LeaveRequest.created_at.desc()).all()
+    
+    return render_template('leave_history.html', employee=employee, leave_requests=leave_requests)
+
+# 従業員向け個人情報更新申請機能
+@app.route('/request_personal_info_update', methods=['GET', 'POST'])
+@login_required
+def request_personal_info_update():
+    if current_user.role != 'employee':
+        flash('アクセス権がありません。')
+        return redirect(url_for('dashboard'))
+        
+    employee = Employee.query.filter_by(id=current_user.employee_id).first()
+    if not employee:
+        flash('従業員情報が見つかりません。')
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        
+        request_type = request.form.get('request_type')
+        new_value = request.form.get('new_value')
+        new_file = request.files.get('new_file')
+        reason = request.form.get('reason')
+        
+        # ファイルアップロードの場合とテキスト入力の場合を分ける
+        uploaded_filename = None
+        if request_type == 'residence_card_file':
+            if new_file and new_file.filename:
+                uploaded_filename = save_residence_card_file(new_file)
+                if not uploaded_filename:
+                    flash('ファイル形式が正しくありません。PNG、JPG、JPEG、PDF形式のみ対応しています。')
+                    return render_template('personal_info_request.html', employee=employee)
+                new_value = uploaded_filename  # ファイル名を新しい値として保存
+            else:
+                flash('ファイルを選択してください。')
+                return render_template('personal_info_request.html', employee=employee)
+        elif request_type == 'car_insurance_file':
+            if new_file and new_file.filename:
+                uploaded_filename = save_car_insurance_file(new_file)
+                if not uploaded_filename:
+                    flash('ファイル形式が正しくありません。PNG、JPG、JPEG、PDF形式のみ対応しています。')
+                    return render_template('personal_info_request.html', employee=employee)
+                new_value = uploaded_filename  # ファイル名を新しい値として保存
+            else:
+                flash('ファイルを選択してください。')
+                return render_template('personal_info_request.html', employee=employee)
+        
+        # バリデーション：テキスト入力またはファイル入力のどちらかが必要
+        if request_type in ['residence_card_file', 'car_insurance_file']:
+            validation_ok = uploaded_filename is not None
+        else:
+            validation_ok = new_value and new_value.strip()
+        
+        if request_type and validation_ok:
+            # 現在の値を取得
+            current_value = ''
+            if request_type == 'address':
+                current_value = employee.address or ''
+            elif request_type == 'phone':
+                current_value = employee.phone_number or ''
+            elif request_type == 'residence_card_expiry':
+                current_value = employee.residence_card_expiry.strftime('%Y-%m-%d') if employee.residence_card_expiry else ''
+            elif request_type == 'residence_card_file':
+                current_value = employee.residence_card_filename or ''
+            elif request_type == 'car_insurance_expiry':
+                current_value = employee.car_insurance_expiry.strftime('%Y-%m-%d') if employee.car_insurance_expiry else ''
+            elif request_type == 'car_insurance_file':
+                current_value = employee.car_insurance_filename or ''
+            
+            try:
+                personal_info_request = PersonalInfoRequest(
+                    employee_id=employee.id,
+                    request_type=request_type,
+                    current_value=current_value,
+                    new_value=new_value,
+                    uploaded_filename=uploaded_filename,
+                    reason=reason
+                )
+                
+                db.session.add(personal_info_request)
+                db.session.commit()
+                
+                flash('個人情報更新申請を提出しました。管理者の承認をお待ちください。')
+                return redirect(url_for('dashboard'))
+            except Exception as e:
+                db.session.rollback()
+                flash('申請の提出中にエラーが発生しました。もう一度お試しください。')
+                return render_template('personal_info_request.html', employee=employee)
+        else:
+            if not request_type:
+                flash('変更項目を選択してください。')
+            elif request_type == 'residence_card_file':
+                flash('ファイルを選択してください。')
+            else:
+                flash('新しい値を入力してください。')
+    
+    return render_template('personal_info_request.html', employee=employee)
+
+# 管理者向け申請管理機能
+@app.route('/admin_requests')
+@login_required
+def admin_requests():
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('dashboard'))
+    
+    
+    # 承認待ちの申請を取得
+    pending_leave_requests = LeaveRequest.query.filter_by(status='pending').order_by(LeaveRequest.created_at.desc()).all()
+    pending_personal_info_requests = PersonalInfoRequest.query.filter_by(status='pending').order_by(PersonalInfoRequest.created_at.desc()).all()
+    
+    # 最近処理された申請も表示（直近10件）
+    recent_leave_requests = LeaveRequest.query.filter(LeaveRequest.status.in_(['approved', 'rejected'])).order_by(LeaveRequest.reviewed_at.desc()).limit(10).all()
+    recent_personal_info_requests = PersonalInfoRequest.query.filter(PersonalInfoRequest.status.in_(['approved', 'rejected'])).order_by(PersonalInfoRequest.reviewed_at.desc()).limit(10).all()
+    
+    return render_template('admin_requests.html',
+                         pending_leave_requests=pending_leave_requests,
+                         pending_personal_info_requests=pending_personal_info_requests,
+                         recent_leave_requests=recent_leave_requests,
+                         recent_personal_info_requests=recent_personal_info_requests)
+
+@app.route('/review_leave_request/<int:request_id>/<action>')
+@login_required
+def review_leave_request(request_id, action):
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('dashboard'))
+    
+    
+    leave_request = LeaveRequest.query.get_or_404(request_id)
+    
+    if action == 'approve':
+        leave_request.status = 'approved'
+        leave_request.reviewed_at = datetime.now()
+        leave_request.reviewed_by = current_user.id
+        
+        # 有給休暇記録を追加
+        leave_record = LeaveRecord(
+            employee_id=leave_request.employee_id,
+            date_taken=leave_request.start_date,
+            days_taken=leave_request.days_requested
+        )
+        db.session.add(leave_record)
+        
+        flash(f'{leave_request.employee.name}さんの有給休暇申請を承認しました。')
+        
+    elif action == 'reject':
+        leave_request.status = 'rejected'
+        leave_request.reviewed_at = datetime.now()
+        leave_request.reviewed_by = current_user.id
+        
+        flash(f'{leave_request.employee.name}さんの有給休暇申請を却下しました。')
+    
+    db.session.commit()
+    return redirect(url_for('admin_requests'))
+
+@app.route('/review_personal_info_request/<int:request_id>/<action>')
+@login_required
+def review_personal_info_request(request_id, action):
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('dashboard'))
+    
+    
+    personal_info_request = PersonalInfoRequest.query.get_or_404(request_id)
+    
+    if action == 'approve':
+        personal_info_request.status = 'approved'
+        personal_info_request.reviewed_at = datetime.now()
+        personal_info_request.reviewed_by = current_user.id
+        
+        # 実際に従業員情報を更新
+        employee = personal_info_request.employee
+        if personal_info_request.request_type == 'address':
+            employee.address = personal_info_request.new_value
+        elif personal_info_request.request_type == 'phone':
+            employee.phone_number = personal_info_request.new_value
+        elif personal_info_request.request_type == 'residence_card_expiry':
+            employee.residence_card_expiry = datetime.strptime(personal_info_request.new_value, '%Y-%m-%d').date()
+        elif personal_info_request.request_type == 'residence_card_file':
+            employee.residence_card_filename = personal_info_request.uploaded_filename
+        elif personal_info_request.request_type == 'car_insurance_expiry':
+            employee.car_insurance_expiry = datetime.strptime(personal_info_request.new_value, '%Y-%m-%d').date()
+        elif personal_info_request.request_type == 'car_insurance_file':
+            employee.car_insurance_filename = personal_info_request.uploaded_filename
+        
+        flash(f'{employee.name}さんの個人情報更新申請を承認し、情報を更新しました。')
+        
+    elif action == 'reject':
+        personal_info_request.status = 'rejected'
+        personal_info_request.reviewed_at = datetime.now()
+        personal_info_request.reviewed_by = current_user.id
+        
+        flash(f'{personal_info_request.employee.name}さんの個人情報更新申請を却下しました。')
+    
+    db.session.commit()
+    return redirect(url_for('admin_requests'))
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    if current_user.role == 'admin':
+        return admin_dashboard()
+    elif current_user.role == 'employee':
+        return employee_dashboard()
+    else:
+        flash('アクセス権がありません。')
+        return redirect(url_for('login'))
+
+def admin_dashboard():
+    employees = Employee.query.all()
+    
+    # 期限切れの警告フラグを計算（2か月/1か月の二段階）
+    from datetime import date, timedelta
+    today = date.today()
+    threshold_60 = today + timedelta(days=60)
+    threshold_30 = today + timedelta(days=30)
+
+    def categorize(expiry):
+        if not expiry:
+            return 'none'
+        if expiry <= today:
+            return 'expired'
+        if expiry <= threshold_30:
+            return 'warn30'
+        if expiry <= threshold_60:
+            return 'warn60'
+        return 'normal'
+
+    for employee in employees:
+        # 各レベルを算出
+        employee.residence_card_level = categorize(employee.residence_card_expiry)
+        employee.car_insurance_level = categorize(employee.car_insurance_expiry)
+
+        # 後方互換（既存テンプレの参照があれば）
+        level_map_to_old = {
+            'none': 'none',
+            'normal': 'normal',
+            'warn60': 'warning',
+            'warn30': 'warning',
+            'expired': 'expired',
+        }
+        employee.residence_card_warning = level_map_to_old[employee.residence_card_level]
+        employee.car_insurance_warning = level_map_to_old[employee.car_insurance_level]
+
+        # 行背景は warn30 と expired のときのみ
+        employee.is_bg_row = (
+            employee.residence_card_level in ['warn30', 'expired'] or
+            employee.car_insurance_level in ['warn30', 'expired']
+        )
+        # アイコンは warn30 と expired のときのみ
+        employee.show_icon = (
+            employee.residence_card_level in ['warn30', 'expired'] or
+            employee.car_insurance_level in ['warn30', 'expired']
+        )
+
+    return render_template('dashboard.html', employees=employees)
+
+def employee_dashboard():
+    
+    # 従業員情報の取得
+    employee = Employee.query.filter_by(id=current_user.employee_id).first()
+    if not employee:
+        flash('従業員情報が見つかりません。')
+        return redirect(url_for('login'))
+    
+    # 有給休暇の残日数計算
+    total_credited = sum([credit.days_credited for credit in employee.leave_credits])
+    total_taken = sum([record.days_taken for record in employee.leave_records])
+    remaining_leave = total_credited - total_taken
+    
+    # 申請履歴の取得
+    leave_requests = LeaveRequest.query.filter_by(employee_id=employee.id).order_by(LeaveRequest.created_at.desc()).limit(5).all()
+    personal_info_requests = PersonalInfoRequest.query.filter_by(employee_id=employee.id).order_by(PersonalInfoRequest.created_at.desc()).limit(5).all()
+    
+    return render_template('employee_dashboard.html', 
+                         employee=employee, 
+                         remaining_leave=remaining_leave,
+                         leave_requests=leave_requests,
+                         personal_info_requests=personal_info_requests)
+
+@app.route('/add', methods=['POST'])
+@login_required
+def add_employee():
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        name = request.form.get('name')
+        birth_date_str = request.form.get('birth_date')
+        gender = request.form.get('gender')
+        join_date_str = request.form.get('join_date')
+        phone_number = request.form.get('phone_number')
+        address = request.form.get('address')
+        status = request.form.get('status')
+        photo = request.files.get('photo')
+        residence_card_file = request.files.get('residence_card_file')
+        car_insurance_file = request.files.get('car_insurance_file')
+        nationality = request.form.get('nationality')
+        residence_card_expiry_str = request.form.get('residence_card_expiry')
+        car_insurance_expiry_str = request.form.get('car_insurance_expiry')
+        
+        if name and join_date_str and status:
+            try:
+                # 日付文字列をDateオブジェクトに変換
+                join_date = datetime.strptime(join_date_str, '%Y-%m-%d').date()
+                
+                # 生年月日の処理
+                birth_date = None
+                if birth_date_str:
+                    birth_date = datetime.strptime(birth_date_str, '%Y-%m-%d').date()
+                
+                # 在留カード期限の処理
+                residence_card_expiry = None
+                if residence_card_expiry_str:
+                    residence_card_expiry = datetime.strptime(residence_card_expiry_str, '%Y-%m-%d').date()
+                
+                # 自動車保険満了日の処理
+                car_insurance_expiry = None
+                if car_insurance_expiry_str:
+                    car_insurance_expiry = datetime.strptime(car_insurance_expiry_str, '%Y-%m-%d').date()
+                
+                # 画像ファイルの処理
+                photo_filename = None
+                if photo:
+                    photo_filename = save_photo(photo)
+                    if not photo_filename:
+                        flash('画像ファイルの形式が正しくありません。PNG、JPG、JPEG、GIF形式のみ対応しています。')
+                        return redirect(url_for('dashboard'))
+                
+                # 在留カードファイルの処理
+                residence_card_filename = None
+                if residence_card_file:
+                    residence_card_filename = save_residence_card_file(residence_card_file)
+                    if not residence_card_filename:
+                        flash('在留カードファイルの形式が正しくありません。PNG、JPG、JPEG、PDF形式のみ対応しています。')
+                        return redirect(url_for('dashboard'))
+                
+                # 自動車保険証ファイルの処理
+                car_insurance_filename = None
+                if car_insurance_file:
+                    car_insurance_filename = save_car_insurance_file(car_insurance_file)
+                    if not car_insurance_filename:
+                        flash('自動車保険証ファイルの形式が正しくありません。PNG、JPG、JPEG、PDF形式のみ対応しています。')
+                        return redirect(url_for('dashboard'))
+                
+                # 新しい従業員を作成
+                new_employee = Employee(
+                    name=name,
+                    birth_date=birth_date,
+                    gender=gender if gender else None,
+                    join_date=join_date,
+                    phone_number=phone_number if phone_number else None,
+                    address=address if address else None,
+                    photo_filename=photo_filename,
+                    nationality=nationality if nationality else None,
+                    residence_card_expiry=residence_card_expiry,
+                    residence_card_filename=residence_card_filename,
+                    car_insurance_expiry=car_insurance_expiry,
+                    car_insurance_filename=car_insurance_filename,
+                    status=status
+                )
+                
+                # データベースに保存
+                db.session.add(new_employee)
+                db.session.commit()
+                
+                flash('従業員が正常に追加されました。')
+                return redirect(url_for('dashboard'))
+                
+            except ValueError:
+                flash('日付の形式が正しくありません。')
+                return redirect(url_for('dashboard'))
+        else:
+            flash('必須項目（氏名、入社年月日、在籍状況）を入力してください。')
+            return redirect(url_for('dashboard'))
+    
+    return redirect(url_for('dashboard'))
+
+@app.route('/edit/<int:employee_id>', methods=['GET', 'POST'])
+@login_required
+def edit_employee(employee_id):
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('login'))
+    
+    employee = Employee.query.get_or_404(employee_id)
+    
+    if request.method == 'POST':
+        name = request.form.get('name')
+        birth_date_str = request.form.get('birth_date')
+        gender = request.form.get('gender')
+        join_date_str = request.form.get('join_date')
+        phone_number = request.form.get('phone_number')
+        address = request.form.get('address')
+        status = request.form.get('status')
+        photo = request.files.get('photo')
+        residence_card_file = request.files.get('residence_card_file')
+        car_insurance_file = request.files.get('car_insurance_file')
+        nationality = request.form.get('nationality')
+        residence_card_expiry_str = request.form.get('residence_card_expiry')
+        car_insurance_expiry_str = request.form.get('car_insurance_expiry')
+        
+        if name and join_date_str and status:
+            try:
+                # 日付文字列をDateオブジェクトに変換
+                join_date = datetime.strptime(join_date_str, '%Y-%m-%d').date()
+                
+                # 生年月日の処理
+                birth_date = None
+                if birth_date_str:
+                    birth_date = datetime.strptime(birth_date_str, '%Y-%m-%d').date()
+                
+                # 在留カード期限の処理
+                residence_card_expiry = None
+                if residence_card_expiry_str:
+                    residence_card_expiry = datetime.strptime(residence_card_expiry_str, '%Y-%m-%d').date()
+                
+                # 自動車保険満了日の処理
+                car_insurance_expiry = None
+                if car_insurance_expiry_str:
+                    car_insurance_expiry = datetime.strptime(car_insurance_expiry_str, '%Y-%m-%d').date()
+                
+                # 画像ファイルの処理
+                if photo:
+                    photo_filename = save_photo(photo)
+                    if not photo_filename:
+                        flash('画像ファイルの形式が正しくありません。PNG、JPG、JPEG、GIF形式のみ対応しています。')
+                        return redirect(url_for('edit_employee', employee_id=employee_id))
+                    employee.photo_filename = photo_filename
+                
+                # 在留カードファイルの処理
+                if residence_card_file:
+                    residence_card_filename = save_residence_card_file(residence_card_file)
+                    if not residence_card_filename:
+                        flash('在留カードファイルの形式が正しくありません。PNG、JPG、JPEG、PDF形式のみ対応しています。')
+                        return redirect(url_for('edit_employee', employee_id=employee_id))
+                    employee.residence_card_filename = residence_card_filename
+                
+                # 自動車保険証ファイルの処理
+                if car_insurance_file:
+                    car_insurance_filename = save_car_insurance_file(car_insurance_file)
+                    if not car_insurance_filename:
+                        flash('自動車保険証ファイルの形式が正しくありません。PNG、JPG、JPEG、PDF形式のみ対応しています。')
+                        return redirect(url_for('edit_employee', employee_id=employee_id))
+                    employee.car_insurance_filename = car_insurance_filename
+                
+                # 従業員情報を更新
+                employee.name = name
+                employee.birth_date = birth_date
+                employee.gender = gender if gender else None
+                employee.join_date = join_date
+                employee.phone_number = phone_number if phone_number else None
+                employee.address = address if address else None
+                employee.nationality = nationality if nationality else None
+                employee.residence_card_expiry = residence_card_expiry
+                employee.car_insurance_expiry = car_insurance_expiry
+                employee.status = status
+                
+                # データベースに保存
+                db.session.commit()
+                
+                flash('従業員情報が正常に更新されました。')
+                return redirect(url_for('dashboard'))
+                
+            except ValueError:
+                flash('日付の形式が正しくありません。')
+        else:
+            flash('必須項目（氏名、入社年月日、在籍状況）を入力してください。')
+    
+    return render_template('edit_employee.html', employee=employee)
+
+@app.route('/delete/<int:employee_id>')
+@login_required
+def delete_employee(employee_id):
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('login'))
+    
+    employee = Employee.query.get_or_404(employee_id)
+    
+    try:
+        # 従業員を削除
+        db.session.delete(employee)
+        db.session.commit()
+        
+        flash('従業員が正常に削除されました。')
+    except Exception:
+        flash('従業員の削除中にエラーが発生しました。')
+        db.session.rollback()
+    
+    return redirect(url_for('dashboard'))
+
+@app.route('/leave_management')
+@login_required
+def leave_management():
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('login'))
+    
+    # 全従業員を取得
+    employees = Employee.query.all()
+    
+    # 各従業員の年休付与合計、取得合計、残日数を計算
+    for employee in employees:
+        # 年休付与合計
+        total_credited = db.session.query(db.func.sum(LeaveCredit.days_credited))\
+            .filter(LeaveCredit.employee_id == employee.id)\
+            .scalar() or 0
+        employee.total_leave_credited = total_credited
+        
+        # 年休取得合計
+        total_taken = db.session.query(db.func.sum(LeaveRecord.days_taken))\
+            .filter(LeaveRecord.employee_id == employee.id)\
+            .scalar() or 0
+        employee.total_leave_taken = total_taken
+        
+        # 残日数
+        employee.remaining_leave = total_credited - total_taken
+        
+        # 法律に基づく付与日数（join_dateがNoneの場合は0）
+        if employee.join_date:
+            employee.legal_leave_days = calculate_annual_leave_days(employee.join_date)
+        else:
+            employee.legal_leave_days = 0
+        
+        # 次回自動付与予定日を計算
+        if employee.status == '在籍中' and employee.join_date:
+            # 前回の自動付与日を取得
+            last_auto_grant = db.session.query(LeaveCredit)\
+                .filter(LeaveCredit.employee_id == employee.id)\
+                .order_by(LeaveCredit.date_credited.desc())\
+                .first()
+            
+            if last_auto_grant:
+                # 前回の付与日から1年後
+                from datetime import timedelta
+                employee.next_auto_grant_date = last_auto_grant.date_credited + timedelta(days=365)
+            else:
+                # 入社日から1年後
+                from datetime import timedelta
+                employee.next_auto_grant_date = employee.join_date + timedelta(days=365)
+        else:
+            employee.next_auto_grant_date = None
+    
+    return render_template('leave_management.html', employees=employees)
+
+@app.route('/add_leave_credit', methods=['POST'])
+@login_required
+def add_leave_credit():
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        employee_id = request.form.get('employee_id')
+        days_credited = request.form.get('days_credited')
+        
+        if employee_id and days_credited:
+            try:
+                employee_id = int(employee_id)
+                days_credited = int(days_credited)
+                
+                # 従業員が存在するかチェック
+                employee = Employee.query.get(employee_id)
+                if not employee:
+                    flash('指定された従業員が見つかりません。')
+                    return redirect(url_for('leave_management'))
+                
+                # 年休付与を記録
+                new_leave_credit = LeaveCredit(
+                    employee_id=employee_id,
+                    days_credited=days_credited,
+                    date_credited=date.today()
+                )
+                
+                db.session.add(new_leave_credit)
+                db.session.commit()
+                
+                flash(f'{employee.name}に{days_credited}日分の年休を付与しました。')
+                return redirect(url_for('leave_management'))
+                
+            except ValueError:
+                flash('日数は正しい数値を入力してください。')
+                return redirect(url_for('leave_management'))
+        else:
+            flash('従業員と日数を選択してください。')
+            return redirect(url_for('leave_management'))
+    
+    return redirect(url_for('leave_management'))
+
+@app.route('/add_leave_record', methods=['POST'])
+@login_required
+def add_leave_record():
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('leave_management'))
+    
+    if request.method == 'POST':
+        employee_id = request.form.get('employee_id')
+        date_taken_str = request.form.get('date_taken')
+        days_taken = request.form.get('days_taken')
+        
+        if employee_id and date_taken_str and days_taken:
+            try:
+                employee_id = int(employee_id)
+                days_taken = int(days_taken)
+                
+                # 日付文字列をDateオブジェクトに変換
+                date_taken = datetime.strptime(date_taken_str, '%Y-%m-%d').date()
+                
+                # 従業員が存在するかチェック
+                employee = Employee.query.get(employee_id)
+                if not employee:
+                    flash('指定された従業員が見つかりません。')
+                    return redirect(url_for('leave_management'))
+                
+                # 年休取得を記録
+                new_leave_record = LeaveRecord(
+                    employee_id=employee_id,
+                    date_taken=date_taken,
+                    days_taken=days_taken
+                )
+                
+                db.session.add(new_leave_record)
+                db.session.commit()
+                
+                flash(f'{employee.name}の年休取得（{days_taken}日）を記録しました。')
+                return redirect(url_for('leave_management'))
+                
+            except ValueError:
+                flash('日数は正しい数値を入力してください。')
+                return redirect(url_for('leave_management'))
+        else:
+            flash('従業員、取得日、日数を入力してください。')
+            return redirect(url_for('leave_management'))
+    
+    return redirect(url_for('leave_management'))
+
+@app.route('/company_calendar')
+@login_required
+def company_calendar():
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('login'))
+    
+    # イベントを日付順で取得
+    calendar_events = CompanyCalendar.query.order_by(CompanyCalendar.event_date.asc()).all()
+    
+    # 現在の年の休日数を計算（祝日 + 土日）
+    current_year = datetime.now().year
+    holiday_count = 0
+    
+    # 祝日・会社休日をカウント
+    for event in calendar_events:
+        if event.event_type in ['holiday', 'company_holiday']:
+            if event.is_recurring or event.event_date.year == current_year:
+                holiday_count += 1
+    
+    # 土曜日・日曜日をカウント
+    from calendar import monthrange
+    weekend_count = 0
+    for month in range(1, 13):
+        days_in_month = monthrange(current_year, month)[1]
+        for day in range(1, days_in_month + 1):
+            weekday = date(current_year, month, day).weekday()
+            if weekday in [5, 6]:  # 土曜日=5, 日曜日=6
+                weekend_count += 1
+    
+    holiday_count += weekend_count
+    
+    # カレンダー開始月設定を取得
+    start_month = int(get_calendar_setting('start_month', '1'))
+    
+    return render_template('company_calendar.html', 
+                         calendar_events=calendar_events,
+                         holiday_count=holiday_count,
+                         current_year=current_year,
+                         start_month=start_month)
+
+@app.route('/calendar_view')
+@login_required
+def calendar_view():
+    if current_user.role not in ['admin', 'employee']:
+        flash('アクセス権がありません。')
+        return redirect(url_for('login'))
+    
+    # 年を指定できるようにする（デフォルトは現在年）
+    year = request.args.get('year', datetime.now().year, type=int)
+    
+    # カレンダー開始月設定を取得
+    start_month = int(get_calendar_setting('start_month', '1'))
+    
+    # 年間カレンダーデータを生成
+    calendar_data = generate_year_calendar(year, start_month)
+    
+    return render_template('calendar_view.html', calendar_data=calendar_data, year=year, start_month=start_month)
+
+def generate_year_calendar(year, start_month=1):
+    """指定された年の12ヶ月カレンダーデータを生成（開始月指定可能）"""
+    import calendar
+    calendar_data = []
+    
+    # その年のイベントを取得
+    events = CompanyCalendar.query.filter(
+        db.or_(
+            db.extract('year', CompanyCalendar.event_date) == year,
+            CompanyCalendar.is_recurring == True
+        )
+    ).all()
+    
+    # イベントを日付別に整理
+    events_by_date = {}
+    for event in events:
+        if event.is_recurring:
+            # 毎年繰り返しの場合、指定年の同じ月日に設定
+            event_date = date(year, event.event_date.month, event.event_date.day)
+        else:
+            event_date = event.event_date
+        
+        if event_date.year == year:
+            date_str = event_date.strftime('%Y-%m-%d')
+            if date_str not in events_by_date:
+                events_by_date[date_str] = []
+            events_by_date[date_str].append(event)
+    
+    # 各月のカレンダーを生成（開始月から順番に）
+    cal = calendar.Calendar(firstweekday=6)  # 日曜日を週の最初の日とする
+    
+    # 開始月から12ヶ月分生成
+    for i in range(12):
+        month = ((start_month - 1 + i) % 12) + 1
+        display_year = year
+        
+        # 年をまたぐ場合の調整
+        if start_month > 1 and month < start_month:
+            display_year = year + 1
+        
+        month_data = {
+            'month': month,
+            'month_name': f'{month}月',
+            'display_year': display_year,
+            'weeks': []
+        }
+        
+        # その月のカレンダーを取得
+        month_calendar = cal.monthdayscalendar(display_year, month)
+        
+        for week in month_calendar:
+            week_data = []
+            for day in week:
+                if day == 0:
+                    # 月の範囲外の日
+                    week_data.append({
+                        'day': '',
+                        'date': None,
+                        'events': [],
+                        'is_today': False,
+                        'is_weekend': False,
+                        'is_other_month': True
+                    })
+                else:
+                    # 該当月の日
+                    current_date = date(display_year, month, day)
+                    date_str = current_date.strftime('%Y-%m-%d')
+                    weekday = current_date.weekday()  # 0=月曜日, 6=日曜日
+                    
+                    # 土日判定（土曜日=5、日曜日=6）
+                    is_weekend = weekday >= 5
+                    
+                    # 今日かどうか判定
+                    is_today = current_date == date.today()
+                    
+                    week_data.append({
+                        'day': day,
+                        'date': current_date,
+                        'events': events_by_date.get(date_str, []),
+                        'is_today': is_today,
+                        'is_weekend': is_weekend,
+                        'is_other_month': False
+                    })
+            
+            month_data['weeks'].append(week_data)
+        
+        # 週数を5週に固定（不足分は空行で補完）
+        while len(month_data['weeks']) < 5:
+            empty_week = []
+            for i in range(7):
+                empty_week.append({
+                    'day': '',
+                    'date': None,
+                    'events': [],
+                    'is_today': False,
+                    'is_weekend': False,
+                    'is_other_month': True
+                })
+            month_data['weeks'].append(empty_week)
+        
+        # 6週の場合は5週に制限
+        if len(month_data['weeks']) > 5:
+            month_data['weeks'] = month_data['weeks'][:5]
+        
+        calendar_data.append(month_data)
+    
+    return calendar_data
+
+@app.route('/add_calendar_event', methods=['POST'])
+@login_required
+def add_calendar_event():
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('company_calendar'))
+    
+    if request.method == 'POST':
+        title = request.form.get('title')
+        event_date_str = request.form.get('event_date')
+        event_type = request.form.get('event_type')
+        description = request.form.get('description')
+        is_recurring = request.form.get('is_recurring') == 'on'
+        
+        if title and event_date_str and event_type:
+            try:
+                event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
+                
+                new_event = CompanyCalendar(
+                    title=title,
+                    event_date=event_date,
+                    event_type=event_type,
+                    description=description if description else None,
+                    is_recurring=is_recurring
+                )
+                
+                db.session.add(new_event)
+                db.session.commit()
+                
+                flash(f'{"休日" if event_type == "holiday" else "イベント"}「{title}」を追加しました。')
+                return redirect(url_for('company_calendar'))
+                
+            except ValueError:
+                flash('日付の形式が正しくありません。')
+                return redirect(url_for('company_calendar'))
+        else:
+            flash('タイトル、日付、種別を入力してください。')
+            return redirect(url_for('company_calendar'))
+    
+    return redirect(url_for('company_calendar'))
+
+@app.route('/edit_calendar_event/<int:event_id>', methods=['GET', 'POST'])
+@login_required
+def edit_calendar_event(event_id):
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('company_calendar'))
+    
+    event = CompanyCalendar.query.get_or_404(event_id)
+    
+    if request.method == 'POST':
+        title = request.form.get('title')
+        event_date_str = request.form.get('event_date')
+        event_type = request.form.get('event_type')
+        description = request.form.get('description')
+        is_recurring = request.form.get('is_recurring') == 'on'
+        
+        if title and event_date_str and event_type:
+            try:
+                event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
+                
+                event.title = title
+                event.event_date = event_date
+                event.event_type = event_type
+                event.description = description if description else None
+                event.is_recurring = is_recurring
+                event.updated_at = date.today()
+                
+                db.session.commit()
+                
+                flash(f'{"休日" if event_type == "holiday" else "イベント"}「{title}」を更新しました。')
+                return redirect(url_for('company_calendar'))
+                
+            except ValueError:
+                flash('日付の形式が正しくありません。')
+        else:
+            flash('タイトル、日付、種別を入力してください。')
+    
+    return render_template('edit_calendar_event.html', event=event)
+
+@app.route('/delete_calendar_event/<int:event_id>')
+@login_required
+def delete_calendar_event(event_id):
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('company_calendar'))
+    
+    event = CompanyCalendar.query.get_or_404(event_id)
+    
+    try:
+        db.session.delete(event)
+        db.session.commit()
+        flash(f'{"休日" if event.event_type == "holiday" else "イベント"}「{event.title}」を削除しました。')
+    except Exception:
+        flash('削除中にエラーが発生しました。')
+        db.session.rollback()
+    
+    return redirect(url_for('company_calendar'))
+
+@app.route('/calendar_settings', methods=['POST'])
+@login_required
+def calendar_settings():
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('company_calendar'))
+    
+    if request.method == 'POST':
+        start_month = request.form.get('start_month')
+        
+        if start_month and start_month.isdigit():
+            start_month = int(start_month)
+            if 1 <= start_month <= 12:
+                set_calendar_setting('start_month', str(start_month), 'カレンダー表示開始月')
+                flash(f'カレンダー開始月を{start_month}月に設定しました。')
+            else:
+                flash('開始月は1-12の範囲で指定してください。')
+        else:
+            flash('正しい月を選択してください。')
+    
+    return redirect(url_for('company_calendar'))
+
+@app.route('/employee_detail/<int:employee_id>')
+@login_required
+def employee_detail(employee_id):
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('login'))
+    
+    employee = Employee.query.get_or_404(employee_id)
+    
+    # 年休付与履歴
+    leave_credits = LeaveCredit.query.filter_by(employee_id=employee_id).order_by(LeaveCredit.date_credited.desc()).all()
+    
+    # 年休取得履歴
+    leave_records = LeaveRecord.query.filter_by(employee_id=employee_id).order_by(LeaveRecord.date_taken.desc()).all()
+    
+    # 年休合計計算
+    total_credited = db.session.query(db.func.sum(LeaveCredit.days_credited))\
+        .filter(LeaveCredit.employee_id == employee_id)\
+        .scalar() or 0
+    
+    total_taken = db.session.query(db.func.sum(LeaveRecord.days_taken))\
+        .filter(LeaveRecord.employee_id == employee_id)\
+        .scalar() or 0
+    
+    remaining_leave = total_credited - total_taken
+    
+    # 法律に基づく付与日数
+    if employee.join_date:
+        legal_leave_days = calculate_annual_leave_days(employee.join_date)
+    else:
+        legal_leave_days = 0
+    
+    return render_template('employee_detail.html', 
+                         employee=employee,
+                         leave_credits=leave_credits,
+                         leave_records=leave_records,
+                         total_credited=total_credited,
+                         total_taken=total_taken,
+                         remaining_leave=remaining_leave,
+                         legal_leave_days=legal_leave_days)
+
+@app.route('/employee_pdf/<int:employee_id>')
+@login_required
+def employee_pdf(employee_id):
+    if current_user.role != 'admin':
+        flash('アクセス権がありません。')
+        return redirect(url_for('login'))
+    
+    employee = Employee.query.get_or_404(employee_id)
+    
+    try:
+        pdf_buffer = create_employee_pdf(employee)
+        
+        pdf_data = pdf_buffer.read()
+        response = make_response(pdf_data)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename=employee_{employee.id}_{date.today().strftime("%Y%m%d")}.pdf'
+        
+        return response
+        
+    except Exception as e:
+        print(f"PDF generation error: {str(e)}")
+        flash(f'PDFの生成中にエラーが発生しました: {str(e)}')
+        return redirect(url_for('employee_detail', employee_id=employee_id))
+
+@app.route('/calendar_pdf')
+@login_required  
+def calendar_pdf():
+    if current_user.role not in ['admin', 'employee']:
+        flash('アクセス権がありません。')
+        return redirect(url_for('login'))
+    
+    try:
+        current_year = datetime.now().year
+        pdf_buffer = create_calendar_pdf()
+        
+        response = make_response(pdf_buffer.read())
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename=company_calendar_{current_year}.pdf'
+        
+        return response
+        
+    except Exception as e:
+        flash('PDFの生成中にエラーが発生しました。')
+        return redirect(url_for('company_calendar'))
+
+# 他の従業員管理機能（追加、編集、削除）はここに追加していきます。
+
+# --- 起動と初期設定のためのコマンド ---
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5001)

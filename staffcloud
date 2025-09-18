@@ -1,0 +1,117 @@
+#!/bin/bash
+
+# === StaffCloud コマンドラインインターフェース ===
+# 完全自動化されたFlask管理システム
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+show_help() {
+    echo "StaffCloud Management CLI"
+    echo ""
+    echo "Usage: ./staffcloud <command> [options]"
+    echo ""
+    echo "Commands:"
+    echo "  start [port]     - Start StaffCloud (with automatic port management)"
+    echo "  stop             - Stop StaffCloud safely"
+    echo "  restart [port]   - Restart StaffCloud"
+    echo "  status           - Show current status"
+    echo "  logs             - Show recent logs"
+    echo "  cleanup          - Clean up orphaned processes and lock files"
+    echo "  ports            - Show available ports"
+    echo "  help             - Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  ./staffcloud start           # Start on best available port"
+    echo "  ./staffcloud start 5001      # Start on specific port"
+    echo "  ./staffcloud restart         # Restart application"
+    echo "  ./staffcloud status          # Check if running"
+    echo ""
+}
+
+check_dependencies() {
+    if [ ! -f "flask_manager.py" ]; then
+        echo "❌ Flask manager not found. Please run setup first."
+        exit 1
+    fi
+    
+    if [ ! -d "venv" ]; then
+        echo "📦 Creating virtual environment..."
+        python3 -m venv venv
+    fi
+    
+    source venv/bin/activate
+    
+    if ! python -c "import psutil" 2>/dev/null; then
+        echo "📥 Installing dependencies..."
+        pip install -r requirements.txt --quiet
+    fi
+}
+
+case "${1:-help}" in
+    "start")
+        check_dependencies
+        source venv/bin/activate
+        if [ -n "$2" ]; then
+            python flask_manager.py start "$2"
+        else
+            python flask_manager.py start
+        fi
+        ;;
+    
+    "stop")
+        check_dependencies
+        source venv/bin/activate
+        python flask_manager.py stop
+        ;;
+    
+    "restart")
+        check_dependencies
+        source venv/bin/activate
+        python flask_manager.py restart
+        ;;
+    
+    "status")
+        check_dependencies
+        source venv/bin/activate
+        python flask_manager.py status
+        ;;
+    
+    "cleanup")
+        check_dependencies
+        source venv/bin/activate
+        python flask_manager.py cleanup
+        echo "🧹 Cleaning up lock files..."
+        rm -f .port_*.lock .staffcloud_flask.pid 2>/dev/null
+        echo "✅ Cleanup completed"
+        ;;
+    
+    "ports")
+        echo "🔍 Checking available ports..."
+        for port in {5000..5010}; do
+            if command -v nc >/dev/null && nc -z 127.0.0.1 $port 2>/dev/null; then
+                echo "  Port $port: ❌ In use"
+            else
+                echo "  Port $port: ✅ Available"
+            fi
+        done
+        ;;
+    
+    "logs")
+        if [ -f "staffcloud_flask.log" ]; then
+            tail -20 staffcloud_flask.log
+        else
+            echo "📄 No log file found"
+        fi
+        ;;
+    
+    "help"|"--help"|"-h")
+        show_help
+        ;;
+    
+    *)
+        echo "❌ Unknown command: $1"
+        echo "Use './staffcloud help' for usage information"
+        exit 1
+        ;;
+esac

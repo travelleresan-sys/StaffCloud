@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}簡単仕訳入力 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-magic me-2"></i>簡単仕訳入力
+                </h1>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('journal_entries') }}" class="btn btn-outline-info">
+                        <i class="bi bi-pencil-square me-1"></i>詳細入力
+                    </a>
+                    <a href="{{ url_for('accounting_dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 説明 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>簡単仕訳入力</strong> - 難しい勘定科目を知らなくても、日常的な言葉で仕訳を入力できます。
+                取引内容を選択するだけで、システムが自動的に仕訳を作成します。
+            </div>
+        </div>
+    </div>
+
+    <!-- 簡単仕訳入力フォーム -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-plus-circle me-2"></i>取引内容入力
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('create_simple_journal_entry') }}">
+                        <!-- 基本情報 -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <label for="entry_date" class="form-label">取引日 *</label>
+                                <input type="date" class="form-control" id="entry_date" name="entry_date" 
+                                       value="{{ today }}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="reference_number" class="form-label">伝票番号</label>
+                                <input type="text" class="form-control" id="reference_number" name="reference_number" 
+                                       placeholder="例: V001">
+                            </div>
+                        </div>
+
+                        <!-- 取引内容選択 -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <label class="form-label">取引内容 *</label>
+                                <div class="row">
+                                    {% for category, patterns in patterns_by_category.items() %}
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card h-100">
+                                            <div class="card-header 
+                                                {% if category == '売上関係' %}bg-success text-white
+                                                {% elif category == '仕入関係' %}bg-primary text-white
+                                                {% elif category == '経費関係' %}bg-warning text-dark
+                                                {% elif category == '給与・報酬' %}bg-info text-white
+                                                {% else %}bg-secondary text-white{% endif %}
+                                            ">
+                                                <h6 class="card-title mb-0">{{ category }}</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                {% for pattern in patterns %}
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="radio" name="pattern_id" 
+                                                           value="{{ pattern.id }}" id="pattern_{{ pattern.id }}"
+                                                           data-transaction-type="{{ pattern.transaction_type }}"
+                                                           data-tax-type="{{ pattern.tax_type }}">
+                                                    <label class="form-check-label" for="pattern_{{ pattern.id }}">
+                                                        <small class="text-muted">{{ pattern.transaction_type }}</small><br>
+                                                        {{ pattern.pattern_name }}
+                                                    </label>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 金額 -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label for="amount" class="form-label">金額 *</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="amount" name="amount" 
+                                           placeholder="10000" min="1" required>
+                                    <span class="input-group-text">円</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 現金・預金口座選択 -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="cash_account_id" class="form-label">支払元・入金先 *</label>
+                                <select class="form-select" id="cash_account_id" name="cash_account_id" required>
+                                    <option value="">現金・預金口座を選択</option>
+                                    {% for account in cash_accounts %}
+                                    <option value="{{ account.id }}">
+                                        {{ account.account_code }} - {{ account.account_name }}
+                                        {% if account.bank_name %}（{{ account.bank_name }}{% if account.branch_name %} {{ account.branch_name }}{% endif %}）{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 取引先・詳細 -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="partner" class="form-label">取引先</label>
+                                <input type="text" class="form-control" id="partner" name="partner" 
+                                       placeholder="例: ○○商事株式会社">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="description" class="form-label">詳細説明</label>
+                                <input type="text" class="form-control" id="description" name="description" 
+                                       placeholder="例: ボールペン、ノート">
+                            </div>
+                        </div>
+
+                        <!-- 税区分表示 -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="alert alert-light" id="tax-info" style="display: none;">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    <strong>税区分:</strong> <span id="tax-type-display"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 確認・登録 -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="card-title">仕訳内容確認</h6>
+                                        <div id="journal-preview" class="mb-3">
+                                            <p class="text-muted">取引内容を選択すると、生成される仕訳をここで確認できます。</p>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary" id="submit-btn" disabled>
+                                            <i class="bi bi-save me-1"></i>仕訳登録
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最近の仕訳一覧 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history me-2"></i>最近の仕訳
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_entries %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>取引日</th>
+                                    <th>摘要</th>
+                                    <th>金額</th>
+                                    <th>登録日時</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in recent_entries %}
+                                <tr>
+                                    <td>{{ entry.entry_date.strftime('%m/%d') }}</td>
+                                    <td>{{ entry.description }}</td>
+                                    <td class="text-end">{{ "{:,}".format(entry.total_amount) }}円</td>
+                                    <td>{{ entry.created_at.strftime('%m/%d %H:%M') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-3 text-muted">
+                        <p>まだ仕訳が登録されていません。</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// フォーム要素の取得
+const patternRadios = document.querySelectorAll('input[name="pattern_id"]');
+const amountInput = document.getElementById('amount');
+const cashAccountSelect = document.getElementById('cash_account_id');
+const partnerInput = document.getElementById('partner');
+const descriptionInput = document.getElementById('description');
+const taxInfo = document.getElementById('tax-info');
+const taxTypeDisplay = document.getElementById('tax-type-display');
+const journalPreview = document.getElementById('journal-preview');
+const submitBtn = document.getElementById('submit-btn');
+
+// フォーム変更時の処理
+function updatePreview() {
+    const selectedPattern = document.querySelector('input[name="pattern_id"]:checked');
+    const amount = amountInput.value;
+    const selectedAccount = cashAccountSelect.selectedOptions[0];
+    
+    if (selectedPattern && amount && selectedAccount && selectedAccount.value) {
+        const transactionType = selectedPattern.dataset.transactionType;
+        const taxType = selectedPattern.dataset.taxType;
+        const patternName = selectedPattern.nextElementSibling.textContent.trim().split('\n')[1].trim();
+        const accountName = selectedAccount.textContent.trim();
+        
+        // 税区分表示
+        taxTypeDisplay.textContent = taxType;
+        taxInfo.style.display = 'block';
+        
+        // 仕訳プレビュー
+        let previewHtml = '<div class="row">';
+        previewHtml += '<div class="col-md-6">';
+        previewHtml += '<h6 class="text-primary">借方</h6>';
+        
+        if (transactionType === '入金') {
+            previewHtml += `<p>${accountName}<br><span class="text-primary">¥${Number(amount).toLocaleString()}</span></p>`;
+        } else {
+            previewHtml += `<p>${patternName}<br><span class="text-primary">¥${Number(amount).toLocaleString()}</span></p>`;
+        }
+        
+        previewHtml += '</div>';
+        previewHtml += '<div class="col-md-6">';
+        previewHtml += '<h6 class="text-success">貸方</h6>';
+        
+        if (transactionType === '入金') {
+            previewHtml += `<p>${patternName}<br><span class="text-success">¥${Number(amount).toLocaleString()}</span></p>`;
+        } else {
+            previewHtml += `<p>${accountName}<br><span class="text-success">¥${Number(amount).toLocaleString()}</span></p>`;
+        }
+        
+        previewHtml += '</div>';
+        previewHtml += '</div>';
+        
+        journalPreview.innerHTML = previewHtml;
+        
+        // 送信ボタンを有効化
+        submitBtn.disabled = false;
+    } else {
+        taxInfo.style.display = 'none';
+        journalPreview.innerHTML = '<p class="text-muted">取引内容を選択すると、生成される仕訳をここで確認できます。</p>';
+        submitBtn.disabled = true;
+    }
+}
+
+// イベントリスナーの追加
+patternRadios.forEach(radio => {
+    radio.addEventListener('change', updatePreview);
+});
+
+amountInput.addEventListener('input', updatePreview);
+cashAccountSelect.addEventListener('change', updatePreview);
+
+// 今日の日付を設定
+document.getElementById('entry_date').valueAsDate = new Date();
+</script>
+{% endblock %}

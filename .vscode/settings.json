@@ -1,0 +1,11 @@
+{
+    "python.pythonPath": "/home/esan/employee-db/venv/bin/python",
+    "python.defaultInterpreterPath": "/home/esan/employee-db/venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.analysis.extraPaths": [
+        "/home/esan/employee-db/venv/lib/python3.12/site-packages"
+    ],
+    "cursorpyright.analysis.extraPaths": [
+        "/home/esan/employee-db/venv/lib/python3.12/site-packages"
+    ]
+}

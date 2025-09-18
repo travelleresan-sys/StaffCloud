@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}企業情報管理 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="text-center">
+                <h1 class="h2 mb-2">
+                    <i class="bi bi-building me-2"></i>企業情報管理
+                </h1>
+                <p class="text-muted mb-0">企業基本情報の管理と設定を行います</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 企業基本情報 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-building me-2"></i>企業基本情報
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('update_company_info') }}">
+                        <div class="row">
+                            <div class="col-12 col-md-6 mb-3">
+                                <label for="company_name" class="form-label">会社名 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="company_name" name="company_name" 
+                                       value="{{ company_settings.company_name if company_settings else '' }}" required>
+                            </div>
+                            <div class="col-12 col-md-6 mb-3">
+                                <label for="company_code" class="form-label">会社コード</label>
+                                <input type="text" class="form-control" id="company_code" name="company_code" 
+                                       value="{{ company_settings.company_code if company_settings else '' }}">
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label for="address" class="form-label">所在地 <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="address" name="address" rows="3" required>{{ company_settings.address if company_settings else '' }}</textarea>
+                            </div>
+                            <div class="col-12 col-md-4 mb-3">
+                                <label for="phone" class="form-label">電話番号</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" 
+                                       value="{{ company_settings.phone if company_settings else '' }}" placeholder="03-1234-5678">
+                            </div>
+                            <div class="col-12 col-md-4 mb-3">
+                                <label for="fax" class="form-label">FAX番号</label>
+                                <input type="tel" class="form-control" id="fax" name="fax" 
+                                       value="{{ company_settings.fax if company_settings else '' }}" placeholder="03-1234-5679">
+                            </div>
+                            <div class="col-12 col-md-4 mb-3">
+                                <label for="email" class="form-label">メールアドレス</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ company_settings.email if company_settings else '' }}" placeholder="info@company.co.jp">
+                            </div>
+                            <div class="col-12 col-md-6 mb-3">
+                                <label for="representative" class="form-label">代表者名 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="representative" name="representative" 
+                                       value="{{ company_settings.representative if company_settings else '' }}" required>
+                            </div>
+                            <div class="col-12 col-md-6 mb-3">
+                                <label for="establishment_date" class="form-label">設立年月日</label>
+                                <input type="date" class="form-control" id="establishment_date" name="establishment_date" 
+                                       value="{{ company_settings.establishment_date.strftime('%Y-%m-%d') if company_settings and company_settings.establishment_date else '' }}">
+                            </div>
+                            <div class="col-12 col-md-4 mb-3">
+                                <label for="capital" class="form-label">資本金（円）</label>
+                                <input type="number" class="form-control" id="capital" name="capital" 
+                                       value="{{ company_settings.capital if company_settings else '' }}" min="0">
+                            </div>
+                            <div class="col-12 col-md-4 mb-3">
+                                <label for="employee_count" class="form-label">従業員数</label>
+                                <input type="number" class="form-control" id="employee_count" name="employee_count" 
+                                       value="{{ company_settings.employee_count if company_settings else '' }}" min="0">
+                            </div>
+                            <div class="col-12 col-md-4 mb-3">
+                                <label for="business_type" class="form-label">事業種別</label>
+                                <select class="form-select" id="business_type" name="business_type">
+                                    <option value="">選択してください</option>
+                                    <option value="製造業" {{ 'selected' if company_settings and company_settings.business_type == '製造業' else '' }}>製造業</option>
+                                    <option value="建設業" {{ 'selected' if company_settings and company_settings.business_type == '建設業' else '' }}>建設業</option>
+                                    <option value="情報通信業" {{ 'selected' if company_settings and company_settings.business_type == '情報通信業' else '' }}>情報通信業</option>
+                                    <option value="HP運営サービス" {{ 'selected' if company_settings and company_settings.business_type == 'HP運営サービス' else '' }}>HP運営サービス</option>
+                                    <option value="運輸業" {{ 'selected' if company_settings and company_settings.business_type == '運輸業' else '' }}>運輸業</option>
+                                    <option value="卸売業" {{ 'selected' if company_settings and company_settings.business_type == '卸売業' else '' }}>卸売業</option>
+                                    <option value="小売業" {{ 'selected' if company_settings and company_settings.business_type == '小売業' else '' }}>小売業</option>
+                                    <option value="飲食サービス業" {{ 'selected' if company_settings and company_settings.business_type == '飲食サービス業' else '' }}>飲食サービス業</option>
+                                    <option value="医療・福祉" {{ 'selected' if company_settings and company_settings.business_type == '医療・福祉' else '' }}>医療・福祉</option>
+                                    <option value="教育・学習支援業" {{ 'selected' if company_settings and company_settings.business_type == '教育・学習支援業' else '' }}>教育・学習支援業</option>
+                                    <option value="その他サービス業" {{ 'selected' if company_settings and company_settings.business_type == 'その他サービス業' else '' }}>その他サービス業</option>
+                                    <option value="その他" {{ 'selected' if company_settings and company_settings.business_type == 'その他' else '' }}>その他</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 会計年度設定 -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <h6 class="mb-3">
+                                    <i class="bi bi-calendar3 me-2"></i>会計年度設定
+                                </h6>
+                            </div>
+                            <div class="col-12 col-md-4 mb-3">
+                                <label for="fiscal_year_start_month" class="form-label">会計年度開始月</label>
+                                <select class="form-select" id="fiscal_year_start_month" name="fiscal_year_start_month">
+                                    {% for month in range(1, 13) %}
+                                    <option value="{{ month }}" {{ 'selected' if company_settings and company_settings.fiscal_year_start_month == month else 'selected' if month == 4 and (not company_settings or company_settings.fiscal_year_start_month is none) else '' }}>
+                                        {{ month }}月
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-4 mb-3">
+                                <label for="fiscal_year_start_day" class="form-label">会計年度開始日</label>
+                                <select class="form-select" id="fiscal_year_start_day" name="fiscal_year_start_day">
+                                    {% for day in range(1, 32) %}
+                                    <option value="{{ day }}" {{ 'selected' if company_settings and company_settings.fiscal_year_start_day == day else 'selected' if day == 1 and (not company_settings or company_settings.fiscal_year_start_day is none) else '' }}>
+                                        {{ day }}日
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-4 mb-3">
+                                <div class="form-text mt-4">
+                                    <small class="text-muted">
+                                        例：4月1日開始 → 2024年4月1日～2025年3月31日
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-2"></i>保存
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 追加機能メニュー -->
+    <div class="row">
+        <div class="col-12 col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 border-success">
+                <div class="card-header bg-success bg-opacity-10">
+                    <h6 class="card-title mb-0 text-success">
+                        <i class="bi bi-bank me-2"></i>銀行口座情報
+                    </h6>
+                </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-bank display-6 text-success mb-2"></i>
+                    <p class="card-text small">給与振込等に使用する銀行口座情報の管理</p>
+                    <button type="button" class="btn btn-success btn-sm" onclick="alert('銀行口座機能は開発中です')">
+                        <i class="bi bi-gear me-1"></i>管理
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 border-warning">
+                <div class="card-header bg-warning bg-opacity-10">
+                    <h6 class="card-title mb-0 text-warning">
+                        <i class="bi bi-shield-check me-2"></i>許認可情報
+                    </h6>
+                </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-shield-check display-6 text-warning mb-2"></i>
+                    <p class="card-text small">事業許可や認可に関する情報の管理</p>
+                    <button type="button" class="btn btn-warning btn-sm" onclick="alert('許認可機能は開発中です')">
+                        <i class="bi bi-gear me-1"></i>管理
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 border-info">
+                <div class="card-header bg-info bg-opacity-10">
+                    <h6 class="card-title mb-0 text-info">
+                        <i class="bi bi-building-gear me-2"></i>事業所情報
+                    </h6>
+                </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-building-gear display-6 text-info mb-2"></i>
+                    <p class="card-text small">複数事業所がある場合の各事業所情報管理</p>
+                    <button type="button" class="btn btn-info btn-sm" onclick="alert('事業所機能は開発中です')">
+                        <i class="bi bi-gear me-1"></i>管理
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

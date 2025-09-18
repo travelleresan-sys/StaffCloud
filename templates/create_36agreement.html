@@ -1,0 +1,606 @@
+{% extends "base.html" %}
+
+{% block title %}36協定管理 - 新規作成 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="bi bi-file-earmark-text me-2"></i>36協定管理 - 新規作成
+                    </h1>
+                    <p class="text-muted mb-0">労働基準法第36条に基づく時間外・休日労働協定届の作成</p>
+                </div>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('general_affairs_36agreement') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 36協定作成フォーム -->
+    <form method="POST" action="{{ url_for('create_36agreement') }}">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-building me-2"></i>事業場の基本情報
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="business_type" class="form-label">
+                            <strong>事業の種類</strong> <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="business_type" name="business_type" required
+                               value="{{ company_settings.business_type if company_settings else '' }}"
+                               placeholder="例：製造業、サービス業、情報通信業">
+                        <small class="text-muted">事業の種類を具体的に入力してください</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="business_name" class="form-label">
+                            <strong>事業の名称</strong> <span class="text-danger">*</span>
+                            <small class="text-info">※企業情報と連動</small>
+                        </label>
+                        <input type="text" class="form-control" id="business_name" name="business_name" required
+                               value="{{ company_settings.company_name if company_settings else '' }}"
+                               placeholder="会社名または事業所名">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="business_postal_code" class="form-label">
+                            <strong>郵便番号</strong> <span class="text-danger">*</span>
+                            <small class="text-info">※企業基本情報と連動</small>
+                        </label>
+                        <input type="text" class="form-control" id="business_postal_code" name="business_postal_code" required
+                               value="{{ company_settings.company_postal_code if company_settings else '' }}"
+                               placeholder="123-4567" pattern="[0-9]{3}-[0-9]{4}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="business_address" class="form-label">
+                            <strong>住所</strong> <span class="text-danger">*</span>
+                            <small class="text-info">※企業基本情報と連動</small>
+                        </label>
+                        <input type="text" class="form-control" id="business_address" name="business_address" required
+                               value="{{ company_settings.address if company_settings and company_settings.address else (company_settings.company_address if company_settings else '') }}"
+                               placeholder="都道府県市区町村番地">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="business_phone" class="form-label">
+                            <strong>電話番号</strong> <span class="text-danger">*</span>
+                            <small class="text-info">※企業基本情報と連動</small>
+                        </label>
+                        <input type="tel" class="form-control" id="business_phone" name="business_phone" required
+                               value="{{ company_settings.phone if company_settings and company_settings.phone else (company_settings.company_phone if company_settings else '') }}"
+                               placeholder="03-1234-5678">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 協定の有効期間 -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-calendar-range me-2"></i>協定の有効期間
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="agreement_start_date" class="form-label">
+                            <strong>有効期間開始日</strong> <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" class="form-control" id="agreement_start_date" name="agreement_start_date" required>
+                        <small class="text-muted">36協定の有効期間開始日</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="agreement_end_date" class="form-label">
+                            <strong>有効期間終了日</strong> <span class="text-danger">*</span>
+                            <small class="text-info">（開始日から1年間）</small>
+                        </label>
+                        <input type="date" class="form-control" id="agreement_end_date" name="agreement_end_date" required>
+                        <small class="text-muted">36協定は原則として1年間有効</small>
+                    </div>
+                </div>
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    36協定の有効期間は原則として1年間です。開始日を入力すると、自動的に1年後の日付が終了日に設定されます。
+                </div>
+            </div>
+        </div>
+
+        <!-- 時間外労働の詳細 -->
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock me-2"></i>時間外労働の詳細
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 mb-3">
+                        <h6 class="text-primary">
+                            <i class="bi bi-list-ol me-2"></i>時間外労働が必要な事由（最大4つまで入力可能）
+                        </h6>
+                        <p class="text-muted mb-0">具体的な事由と対応する業務の種類を記入してください。最低1つは必須です。</p>
+                    </div>
+                    
+                    <!-- 1つ目の事由 -->
+                    <div class="col-12 mb-3">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary bg-opacity-10">
+                                <h6 class="mb-0 text-primary">事由 1 <span class="text-danger">*</span></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8 mb-2">
+                                        <label for="overtime_reason_1" class="form-label">時間外労働が必要な事由</label>
+                                        <textarea class="form-control" id="overtime_reason_1" name="overtime_reason_1" rows="2" required
+                                                placeholder="例：受注の増加による業務量増、システム保守・緊急対応等"></textarea>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label for="overtime_business_type_1" class="form-label">業務の種類</label>
+                                        <input type="text" class="form-control" id="overtime_business_type_1" name="overtime_business_type_1" required
+                                               placeholder="例：システム開発業務">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 2つ目の事由 -->
+                    <div class="col-12 mb-3">
+                        <div class="card border-info">
+                            <div class="card-header bg-info bg-opacity-10">
+                                <h6 class="mb-0 text-info">事由 2</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8 mb-2">
+                                        <label for="overtime_reason_2" class="form-label">時間外労働が必要な事由</label>
+                                        <textarea class="form-control" id="overtime_reason_2" name="overtime_reason_2" rows="2"
+                                                placeholder="例：製品の品質管理、顧客対応等"></textarea>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label for="overtime_business_type_2" class="form-label">業務の種類</label>
+                                        <input type="text" class="form-control" id="overtime_business_type_2" name="overtime_business_type_2"
+                                               placeholder="例：品質管理業務">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 3つ目の事由 -->
+                    <div class="col-12 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning bg-opacity-10">
+                                <h6 class="mb-0 text-warning">事由 3</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8 mb-2">
+                                        <label for="overtime_reason_3" class="form-label">時間外労働が必要な事由</label>
+                                        <textarea class="form-control" id="overtime_reason_3" name="overtime_reason_3" rows="2"
+                                                placeholder="例：繁忙期対応、イベント・キャンペーン対応等"></textarea>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label for="overtime_business_type_3" class="form-label">業務の種類</label>
+                                        <input type="text" class="form-control" id="overtime_business_type_3" name="overtime_business_type_3"
+                                               placeholder="例：営業業務">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 4つ目の事由 -->
+                    <div class="col-12 mb-3">
+                        <div class="card border-secondary">
+                            <div class="card-header bg-secondary bg-opacity-10">
+                                <h6 class="mb-0 text-secondary">事由 4</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8 mb-2">
+                                        <label for="overtime_reason_4" class="form-label">時間外労働が必要な事由</label>
+                                        <textarea class="form-control" id="overtime_reason_4" name="overtime_reason_4" rows="2"
+                                                placeholder="例：災害・事故対応、その他の緊急事態等"></textarea>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label for="overtime_business_type_4" class="form-label">業務の種類</label>
+                                        <input type="text" class="form-control" id="overtime_business_type_4" name="overtime_business_type_4"
+                                               placeholder="例：緊急対応業務">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="overtime_employee_count" class="form-label">
+                            <strong>対象従業員数</strong> <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="overtime_employee_count" name="overtime_employee_count" required
+                                   min="1" max="999" placeholder="10">
+                            <span class="input-group-text">名</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="overtime_hours_daily" class="form-label">
+                            <strong>法定労働時間を超える時間数（1日）</strong> <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="overtime_hours_daily" name="overtime_hours_daily" required
+                                   min="1" max="8" step="0.5" placeholder="2.0">
+                            <span class="input-group-text">時間</span>
+                        </div>
+                        <small class="text-muted">1日8時間を超える労働時間</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="overtime_hours_monthly" class="form-label">
+                            <strong>法定労働時間を超える時間数（1ヶ月）</strong> <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="overtime_hours_monthly" name="overtime_hours_monthly" required
+                                   min="1" max="100" placeholder="45">
+                            <span class="input-group-text">時間</span>
+                        </div>
+                        <small class="text-muted">通常は45時間以内、特別条項付きの場合は100時間未満</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 休日労働の詳細 -->
+        <div class="card mb-4">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-calendar-x me-2"></i>休日労働の詳細
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 mb-3">
+                        <h6 class="text-danger">
+                            <i class="bi bi-list-ol me-2"></i>休日労働が必要な事由（最大4つまで入力可能）
+                        </h6>
+                        <p class="text-muted mb-0">法定休日における労働が必要となる具体的な事由と対応する業務の種類を記入してください。</p>
+                    </div>
+                    
+                    <!-- 1つ目の休日労働事由 -->
+                    <div class="col-12 mb-3">
+                        <div class="card border-danger">
+                            <div class="card-header bg-danger bg-opacity-10">
+                                <h6 class="mb-0 text-danger">休日労働事由 1</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8 mb-2">
+                                        <label for="holiday_work_reason_1" class="form-label">休日労働が必要な事由</label>
+                                        <textarea class="form-control" id="holiday_work_reason_1" name="holiday_work_reason_1" rows="2"
+                                                placeholder="例：緊急時の保守点検、システム障害対応等"></textarea>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label for="holiday_work_business_type_1" class="form-label">業務の種類</label>
+                                        <input type="text" class="form-control" id="holiday_work_business_type_1" name="holiday_work_business_type_1"
+                                               placeholder="例：保守業務">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 2つ目の休日労働事由 -->
+                    <div class="col-12 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning bg-opacity-10">
+                                <h6 class="mb-0 text-warning">休日労働事由 2</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8 mb-2">
+                                        <label for="holiday_work_reason_2" class="form-label">休日労働が必要な事由</label>
+                                        <textarea class="form-control" id="holiday_work_reason_2" name="holiday_work_reason_2" rows="2"
+                                                placeholder="例：顧客からの緊急要請への対応等"></textarea>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label for="holiday_work_business_type_2" class="form-label">業務の種類</label>
+                                        <input type="text" class="form-control" id="holiday_work_business_type_2" name="holiday_work_business_type_2"
+                                               placeholder="例：顧客サポート業務">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 3つ目の休日労働事由 -->
+                    <div class="col-12 mb-3">
+                        <div class="card border-info">
+                            <div class="card-header bg-info bg-opacity-10">
+                                <h6 class="mb-0 text-info">休日労働事由 3</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8 mb-2">
+                                        <label for="holiday_work_reason_3" class="form-label">休日労働が必要な事由</label>
+                                        <textarea class="form-control" id="holiday_work_reason_3" name="holiday_work_reason_3" rows="2"
+                                                placeholder="例：イベント・キャンペーン対応等"></textarea>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label for="holiday_work_business_type_3" class="form-label">業務の種類</label>
+                                        <input type="text" class="form-control" id="holiday_work_business_type_3" name="holiday_work_business_type_3"
+                                               placeholder="例：イベント運営業務">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 4つ目の休日労働事由 -->
+                    <div class="col-12 mb-3">
+                        <div class="card border-secondary">
+                            <div class="card-header bg-secondary bg-opacity-10">
+                                <h6 class="mb-0 text-secondary">休日労働事由 4</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8 mb-2">
+                                        <label for="holiday_work_reason_4" class="form-label">休日労働が必要な事由</label>
+                                        <textarea class="form-control" id="holiday_work_reason_4" name="holiday_work_reason_4" rows="2"
+                                                placeholder="例：災害・事故等の緊急事態対応等"></textarea>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label for="holiday_work_business_type_4" class="form-label">業務の種類</label>
+                                        <input type="text" class="form-control" id="holiday_work_business_type_4" name="holiday_work_business_type_4"
+                                               placeholder="例：緊急対応業務">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="holiday_work_employee_count" class="form-label">
+                            <strong>対象従業員数</strong>
+                        </label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="holiday_work_employee_count" name="holiday_work_employee_count"
+                                   min="0" max="999" placeholder="5">
+                            <span class="input-group-text">名</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="legal_holiday_days_count" class="form-label">
+                            <strong>労働可能な法定休日日数</strong>
+                        </label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="legal_holiday_days_count" name="legal_holiday_days_count"
+                                   min="0" max="53" placeholder="12">
+                            <span class="input-group-text">日/年</span>
+                        </div>
+                        <small class="text-muted">年間の法定休日労働可能日数</small>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="holiday_work_start_time" class="form-label">
+                            <strong>始業時刻</strong>
+                        </label>
+                        <input type="time" class="form-control" id="holiday_work_start_time" name="holiday_work_start_time"
+                               value="09:00">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="holiday_work_end_time" class="form-label">
+                            <strong>終業時刻</strong>
+                        </label>
+                        <input type="time" class="form-control" id="holiday_work_end_time" name="holiday_work_end_time"
+                               value="18:00">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 協定締結情報 -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-file-earmark-check me-2"></i>協定締結情報
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="agreement_conclusion_date" class="form-label">
+                            <strong>協定締結年月日</strong> <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" class="form-control" id="agreement_conclusion_date" name="agreement_conclusion_date" required>
+                        <small class="text-muted">労働者代表と使用者で協定を締結した日付</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="worker_representative_selection_method" class="form-label">
+                            <strong>協定の当事者の選出方法</strong> <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="worker_representative_selection_method" name="worker_representative_selection_method" required>
+                            <option value="">選択してください</option>
+                            <option value="election">従業員による選挙</option>
+                            <option value="appointment">従業員による推薦・指名</option>
+                            <option value="volunteer">立候補による選出</option>
+                            <option value="rotation">輪番制</option>
+                            <option value="other">その他</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 労働者代表 -->
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-person-badge me-2"></i>労働者代表
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="worker_representative_employee_id" class="form-label">
+                            <strong>従業員選択</strong> <span class="text-danger">*</span>
+                            <small class="text-info">※従業員情報から選択</small>
+                        </label>
+                        <select class="form-select" id="worker_representative_employee_id" name="worker_representative_employee_id" required>
+                            <option value="">従業員を選択してください</option>
+                            {% if employees %}
+                                {% for employee in employees %}
+                                <option value="{{ employee.id }}">{{ employee.name }} - {{ employee.position or '役職なし' }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="worker_representative_position" class="form-label">
+                            <strong>役職</strong>
+                        </label>
+                        <input type="text" class="form-control" id="worker_representative_position" name="worker_representative_position"
+                               placeholder="例：労働者代表、組合代表">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="worker_representative_name" class="form-label">
+                            <strong>氏名</strong>
+                        </label>
+                        <input type="text" class="form-control" id="worker_representative_name" name="worker_representative_name" readonly>
+                        <small class="text-muted">従業員選択により自動入力</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 使用者 -->
+        <div class="card mb-4">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-person-gear me-2"></i>使用者
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="employer_employee_id" class="form-label">
+                            <strong>従業員選択</strong> <span class="text-danger">*</span>
+                            <small class="text-info">※従業員情報から選択</small>
+                        </label>
+                        <select class="form-select" id="employer_employee_id" name="employer_employee_id" required>
+                            <option value="">従業員を選択してください</option>
+                            {% if employees %}
+                                {% for employee in employees %}
+                                <option value="{{ employee.id }}">{{ employee.name }} - {{ employee.position or '役職なし' }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="employer_position" class="form-label">
+                            <strong>役職</strong>
+                        </label>
+                        <input type="text" class="form-control" id="employer_position" name="employer_position"
+                               placeholder="例：代表取締役、工場長">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="employer_name" class="form-label">
+                            <strong>氏名</strong>
+                        </label>
+                        <input type="text" class="form-control" id="employer_name" name="employer_name" readonly>
+                        <small class="text-muted">従業員選択により自動入力</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 備考 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-journal-text me-2"></i>備考
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label for="notes" class="form-label">備考・特記事項</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="4"
+                                placeholder="特別条項や条件、その他の重要事項があればご記入ください"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提出ボタン -->
+        <div class="row">
+            <div class="col-12">
+                <div class="text-end">
+                    <button type="button" class="btn btn-outline-secondary me-2" onclick="window.history.back()">
+                        <i class="bi bi-arrow-left me-1"></i>キャンセル
+                    </button>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-check-circle me-2"></i>36協定を作成
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- 注意事項 -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning bg-opacity-10">
+                    <h6 class="card-title mb-0 text-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>36協定について重要な注意事項
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li><strong>法的効力について:</strong> このシステムでの36協定作成は管理・記録目的です。実際の労働基準監督署への届出は別途行ってください。</li>
+                        <li><strong>有効期間:</strong> 36協定の有効期間は原則1年間です。期限切れ前に更新手続きを行ってください。</li>
+                        <li><strong>上限時間:</strong> 法定労働時間を超える労働には厳格な上限があります。特別条項を設ける場合でも年間720時間が上限です。</li>
+                        <li><strong>労働者代表:</strong> 労働者の過半数で組織する労働組合がない場合、労働者の過半数を代表する者を適切に選出してください。</li>
+                        <li><strong>休日労働:</strong> 法定休日（週1日）での労働には35%以上の割増賃金が必要です。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 開始日が変更されたら自動的に終了日を1年後に設定
+document.getElementById('agreement_start_date').addEventListener('change', function() {
+    const startDate = new Date(this.value);
+    const endDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate() - 1);
+    document.getElementById('agreement_end_date').value = endDate.toISOString().split('T')[0];
+});
+
+// 従業員選択時に氏名を自動入力
+document.getElementById('worker_representative_employee_id').addEventListener('change', function() {
+    const selectedText = this.options[this.selectedIndex].text;
+    if (selectedText && selectedText !== '従業員を選択してください') {
+        const name = selectedText.split(' - ')[0];
+        document.getElementById('worker_representative_name').value = name;
+    } else {
+        document.getElementById('worker_representative_name').value = '';
+    }
+});
+
+document.getElementById('employer_employee_id').addEventListener('change', function() {
+    const selectedText = this.options[this.selectedIndex].text;
+    if (selectedText && selectedText !== '従業員を選択してください') {
+        const name = selectedText.split(' - ')[0];
+        document.getElementById('employer_name').value = name;
+    } else {
+        document.getElementById('employer_name').value = '';
+    }
+});
+</script>
+{% endblock %}

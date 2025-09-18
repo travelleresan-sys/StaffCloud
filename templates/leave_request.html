@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}有給休暇申請{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar-plus me-2"></i>休暇申請
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="leave_type" class="form-label">休暇種別 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="leave_type" name="leave_type" required>
+                            <option value="annual_leave">年次有給休暇</option>
+                            <option value="sick_leave">病気休暇</option>
+                            <option value="bereavement">忌引き休暇</option>
+                            <option value="maternity_leave">産前産後休暇</option>
+                            <option value="special_leave">特別休暇</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="start_date" class="form-label">開始日 <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="end_date" class="form-label">終了日 <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">理由</label>
+                        <textarea class="form-control" id="reason" name="reason" rows="3" 
+                                  placeholder="休暇を取得する理由を記入してください（任意）"></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>注意事項:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>営業日（月〜金）のみが申請日数として計算されます</li>
+                            <li>年次有給休暇は残日数の範囲内で申請してください</li>
+                            <li>忌引き休暇・病気休暇等は必要な書類を後日提出してください</li>
+                            <li>申請後は管理者の承認が必要です</li>
+                            <li>承認・却下の結果はダッシュボードで確認できます</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>戻る
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>申請する
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 今日の日付を最小値として設定
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    
+    startDateInput.min = today;
+    endDateInput.min = today;
+    
+    // 終了日の自動更新（開始日以降に制限）
+    startDateInput.addEventListener('change', function() {
+        const startDate = this.value;
+        if (startDate) {
+            endDateInput.min = startDate;
+            if (endDateInput.value && endDateInput.value < startDate) {
+                endDateInput.value = startDate;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

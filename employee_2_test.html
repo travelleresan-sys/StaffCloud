@@ -1,0 +1,136 @@
+
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>従業員情報 - 佐藤 花子</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'MS PGothic', 'MS Gothic', 'Yu Gothic', 'Meiryo', 'DejaVu Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+                color: #333;
+                margin: 20px;
+                background: #f5f5f5;
+            }
+            .container {
+                background: white;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 30px;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            }
+            .header {
+                text-align: center;
+                margin-bottom: 30px;
+                padding-bottom: 20px;
+                border-bottom: 3px solid #2c3e50;
+            }
+            .header h1 {
+                font-size: 24px;
+                color: #2c3e50;
+                font-weight: bold;
+                margin-bottom: 10px;
+            }
+            .section {
+                margin-bottom: 25px;
+            }
+            .section-title {
+                font-size: 18px;
+                font-weight: bold;
+                color: #34495e;
+                margin-bottom: 15px;
+                padding: 8px 0;
+                border-bottom: 2px solid #ecf0f1;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 20px;
+            }
+            th {
+                background-color: #3498db;
+                color: white;
+                font-weight: bold;
+                padding: 12px 10px;
+                text-align: left;
+                border: 1px solid #2980b9;
+            }
+            td {
+                padding: 10px;
+                border: 1px solid #bdc3c7;
+                background-color: #fff;
+            }
+            tr:nth-child(even) td { background-color: #f8f9fa; }
+            .info-table th { width: 30%; background-color: #34495e; }
+            .leave-table th { background-color: #27ae60; border-color: #229954; }
+            .history-table th { background-color: #8e44ad; border-color: #7d3c98; }
+            .status-active { color: #27ae60; font-weight: bold; }
+            .status-inactive { color: #e74c3c; font-weight: bold; }
+            .text-right { text-align: right; }
+            .debug {
+                background: #ffffcc;
+                border: 1px solid #cccc00;
+                padding: 10px;
+                margin: 10px 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>従業員情報 - 佐藤 花子</h1>
+                <p>発行日: 2025年08月26日</p>
+            </div>
+            
+            <div class="debug">
+                <h3>デバッグ情報</h3>
+                <p>文字エンコーディング: UTF-8</p>
+                <p>従業員名: 佐藤 花子</p>
+                <p>従業員ID: 2</p>
+                <p>文字テスト: あいうえお アイウエオ 漢字テスト</p>
+            </div>
+            
+            <div class="section">
+                <h2 class="section-title">基本情報</h2>
+                <table class="info-table">
+                    <tr><th>氏名</th><td>佐藤 花子</td></tr>
+                    <tr><th>生年月日</th><td>1985年08月22日</td></tr>
+                    <tr><th>性別</th><td>女性</td></tr>
+                    <tr><th>入社年月日</th><td>2018年07月15日</td></tr>
+                    <tr><th>電話番号</th><td>080-9876-5432</td></tr>
+                    <tr><th>住所</th><td>東京都渋谷区恵比寿1-2-3</td></tr>
+                    <tr><th>国籍</th><td>日本</td></tr>
+                    <tr><th>在留カード期限</th><td>未設定</td></tr>
+                    <tr><th>自動車保険満了日</th><td>未設定</td></tr>
+                    <tr><th>在籍状況</th><td class="status-active">在籍中</td></tr>
+                </table>
+            </div>
+            
+            <div class="section">
+                <h2 class="section-title">年次有給休暇情報</h2>
+                <table class="leave-table">
+                    <tr><th>項目</th><th class="text-right">日数</th></tr>
+                    <tr><td>付与日数合計</td><td class="text-right">20日</td></tr>
+                    <tr><td>取得日数合計</td><td class="text-right">0日</td></tr>
+                    <tr><td>残日数</td><td class="text-right">20日</td></tr>
+                    <tr><td>法定付与日数</td><td class="text-right">20日</td></tr>
+                </table>
+            </div>
+    
+            <div class="section">
+                <h2 class="section-title">年休付与履歴</h2>
+                <table class="history-table">
+                    <tr><th>付与日</th><th class="text-right">付与日数</th></tr>
+        
+                    <tr>
+                        <td>2018年07月15日</td>
+                        <td class="text-right">20日</td>
+                    </tr>
+            </table></div>
+        </div>
+    </body>
+    </html>
+    

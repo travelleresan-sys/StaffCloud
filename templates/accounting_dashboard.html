@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}経理ダッシュボード - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-calculator me-2"></i>経理ダッシュボード
+                </h1>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-box-arrow-right me-1"></i>ログアウト
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 概要カード -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-people display-4 text-primary mb-3"></i>
+                    <h5 class="card-title">総従業員数</h5>
+                    <h2 class="text-primary">{{ total_employees }}</h2>
+                    <small class="text-muted">在籍中のスタッフ</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-clock display-4 text-warning mb-3"></i>
+                    <h5 class="card-title">今月有給申請</h5>
+                    <h2 class="text-warning">{{ monthly_leave_requests }}</h2>
+                    <small class="text-muted">承認待ち含む</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-graph-up display-4 text-success mb-3"></i>
+                    <h5 class="card-title">人事評価</h5>
+                    <h2 class="text-success">{{ total_evaluations }}</h2>
+                    <small class="text-muted">今年度実施済み</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-calendar-event display-4 text-info mb-3"></i>
+                    <h5 class="card-title">今月休日</h5>
+                    <h2 class="text-info">{{ monthly_holidays }}</h2>
+                    <small class="text-muted">会社カレンダー</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 機能メニュー -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-grid-3x3-gap me-2"></i>経理機能メニュー
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <!-- 労働時間入力 -->
+                        <div class="col-md-4">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-clock display-1 text-primary mb-3"></i>
+                                    <h5 class="card-title">労働時間入力</h5>
+                                    <p class="card-text">月次勤怠入力、労働時間計算</p>
+                                    <a href="{{ url_for('working_time_input') }}" class="btn btn-primary w-100">
+                                        <i class="bi bi-clock-history me-1"></i>入力
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 給与関係 -->
+                        <div class="col-md-4">
+                            <div class="card h-100 border-success">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-currency-yen display-1 text-success mb-3"></i>
+                                    <h5 class="card-title">給与関係</h5>
+                                    <p class="card-text">給与計算、明細発行、賃金台帳</p>
+                                    <div class="d-grid gap-2">
+                                        <a href="{{ url_for('payroll_dashboard') }}" class="btn btn-success btn-sm w-100">
+                                            <i class="bi bi-calculator me-1"></i>給与計算
+                                        </a>
+                                        <a href="{{ url_for('payroll_results') }}" class="btn btn-outline-success btn-sm w-100">
+                                            <i class="bi bi-file-earmark-text me-1"></i>給与明細発行
+                                        </a>
+                                        <a href="{{ url_for('wage_ledger') }}" class="btn btn-outline-success btn-sm w-100">
+                                            <i class="bi bi-journal-text me-1"></i>賃金台帳
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 会計 -->
+                        <div class="col-md-4">
+                            <div class="card h-100 border-info">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-bar-chart display-1 text-info mb-3"></i>
+                                    <h5 class="card-title">会計</h5>
+                                    <p class="card-text">会計帳簿、仕訳、財務表作成</p>
+                                    <div class="row g-1">
+                                        <div class="col-6">
+                                            <a href="{{ url_for('simple_journal_entry') }}" class="btn btn-success btn-sm w-100">
+                                                <i class="bi bi-magic me-1"></i>簡単仕訳入力
+                                            </a>
+                                        </div>
+                                        <div class="col-6">
+                                            <a href="{{ url_for('journal_entries') }}" class="btn btn-info btn-sm w-100">
+                                                <i class="bi bi-pencil-square me-1"></i>詳細仕訳入力
+                                            </a>
+                                        </div>
+                                        <div class="col-6">
+                                            <a href="{{ url_for('accounting_ledger') }}" class="btn btn-info btn-sm w-100">
+                                                <i class="bi bi-journal-text me-1"></i>総勘定元帳
+                                            </a>
+                                        </div>
+                                        <div class="col-6">
+                                            <a href="{{ url_for('financial_statements') }}" class="btn btn-info btn-sm w-100">
+                                                <i class="bi bi-file-earmark-spreadsheet me-1"></i>財務諸表
+                                            </a>
+                                        </div>
+                                        <div class="col-6">
+                                            <a href="{{ url_for('account_management') }}" class="btn btn-warning btn-sm w-100">
+                                                <i class="bi bi-gear me-1"></i>勘定科目管理
+                                            </a>
+                                        </div>
+                                        <div class="col-6">
+                                            <a href="{{ url_for('partner_management') }}" class="btn btn-secondary btn-sm w-100">
+                                                <i class="bi bi-people me-1"></i>取引先管理
+                                            </a>
+                                        </div>
+                                        <div class="col-6">
+                                            <a href="{{ url_for('accounting_period_management') }}" class="btn btn-primary btn-sm w-100">
+                                                <i class="bi bi-calendar3 me-1"></i>年度管理
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 人事データ参照 -->
+                        <div class="col-md-4">
+                            <div class="card h-100 border-warning">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-people display-1 text-warning mb-3"></i>
+                                    <h5 class="card-title">人事データ参照</h5>
+                                    <p class="card-text">従業員情報、出勤状況の参照</p>
+                                    <a href="{{ url_for('dashboard') }}" class="btn btn-warning w-100">
+                                        <i class="bi bi-eye me-1"></i>参照
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 休暇管理 -->
+                        <div class="col-md-4">
+                            <div class="card h-100 border-secondary">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-calendar-check display-1 text-secondary mb-3"></i>
+                                    <h5 class="card-title">休暇管理</h5>
+                                    <p class="card-text">有給休暇残日数、取得状況管理</p>
+                                    <a href="{{ url_for('leave_management') }}" class="btn btn-secondary w-100">
+                                        <i class="bi bi-calendar-week me-1"></i>管理
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 会社カレンダー -->
+                        <div class="col-md-4">
+                            <div class="card h-100 border-dark">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-calendar display-1 text-dark mb-3"></i>
+                                    <h5 class="card-title">会社カレンダー</h5>
+                                    <p class="card-text">祝日、会社イベント、休業日管理</p>
+                                    <a href="{{ url_for('company_calendar') }}" class="btn btn-dark w-100">
+                                        <i class="bi bi-calendar3 me-1"></i>参照
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最近の活動 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history me-2"></i>最近の活動
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_activities %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>日時</th>
+                                        <th>種類</th>
+                                        <th>対象</th>
+                                        <th>ステータス</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for activity in recent_activities %}
+                                    <tr>
+                                        <td>{{ activity.date }}</td>
+                                        <td>{{ activity.type }}</td>
+                                        <td>{{ activity.target }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ activity.status_color }}">{{ activity.status }}</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-inbox display-1 text-muted"></i>
+                            <p class="lead text-muted mt-3">最近の活動はありません。</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

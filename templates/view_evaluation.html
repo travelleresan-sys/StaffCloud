@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}人事評価詳細 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0">
+                <i class="bi bi-eye me-2"></i>人事評価詳細
+            </h1>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('performance_evaluation') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>評価管理に戻る
+                </a>
+                <a href="{{ url_for('edit_evaluation', evaluation_id=evaluation.id) }}" class="btn btn-outline-primary">
+                    <i class="bi bi-pencil me-1"></i>編集
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 基本情報カード -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-person me-2"></i>対象スタッフ情報
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th width="40%">氏名:</th>
+                        <td><strong>{{ evaluation.employee.name }}</strong></td>
+                    </tr>
+                    <tr>
+                        <th>部署:</th>
+                        <td>{{ evaluation.employee.department or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th>役職:</th>
+                        <td>{{ evaluation.employee.position or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th>入社日:</th>
+                        <td>{{ evaluation.employee.join_date.strftime('%Y年%m月%d日') if evaluation.employee.join_date else '-' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 評価概要カード -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clipboard-data me-2"></i>評価概要
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th width="40%">評価期間:</th>
+                        <td><strong>{{ evaluation.evaluation_period }}</strong></td>
+                    </tr>
+                    <tr>
+                        <th>総合評価:</th>
+                        <td>
+                            {% if evaluation.overall_rating %}
+                                <span class="badge fs-6
+                                {% if evaluation.overall_rating >= 4.0 %}bg-success
+                                {% elif evaluation.overall_rating >= 3.0 %}bg-primary
+                                {% elif evaluation.overall_rating >= 2.0 %}bg-warning
+                                {% else %}bg-danger{% endif %}">
+                                    {{ "%.1f"|format(evaluation.overall_rating) }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">未評価</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>ステータス:</th>
+                        <td>
+                            {% if evaluation.status == 'draft' %}
+                                <span class="badge bg-secondary">下書き</span>
+                            {% elif evaluation.status == 'submitted' %}
+                                <span class="badge bg-warning">提出済み</span>
+                            {% elif evaluation.status == 'hr_approved' %}
+                                <span class="badge bg-info">人事承認済み</span>
+                            {% elif evaluation.status == 'approved' %}
+                                <span class="badge bg-success">最終承認済み</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>評価者:</th>
+                        <td>{{ evaluation.evaluator.email if evaluation.evaluator else '-' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 評価スコアカード -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-bar-chart me-2"></i>評価スコア
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded bg-light">
+                            <h6 class="mb-2">業績評価</h6>
+                            {% if evaluation.performance_score %}
+                                <h3 class="text-primary">{{ "%.1f"|format(evaluation.performance_score) }}</h3>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar bg-primary" style="width: {{ (evaluation.performance_score / 5.0 * 100)|round }}%"></div>
+                                </div>
+                            {% else %}
+                                <h3 class="text-muted">-</h3>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar bg-secondary" style="width: 0%"></div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded bg-light">
+                            <h6 class="mb-2">行動評価</h6>
+                            {% if evaluation.behavior_score %}
+                                <h3 class="text-success">{{ "%.1f"|format(evaluation.behavior_score) }}</h3>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar bg-success" style="width: {{ (evaluation.behavior_score / 5.0 * 100)|round }}%"></div>
+                                </div>
+                            {% else %}
+                                <h3 class="text-muted">-</h3>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar bg-secondary" style="width: 0%"></div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded bg-light">
+                            <h6 class="mb-2">潜在能力評価</h6>
+                            {% if evaluation.potential_score %}
+                                <h3 class="text-info">{{ "%.1f"|format(evaluation.potential_score) }}</h3>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar bg-info" style="width: {{ (evaluation.potential_score / 5.0 * 100)|round }}%"></div>
+                                </div>
+                            {% else %}
+                                <h3 class="text-muted">-</h3>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar bg-secondary" style="width: 0%"></div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 詳細コメントカード -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-chat-text me-2"></i>詳細コメント
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h6 class="text-success">
+                                <i class="bi bi-hand-thumbs-up me-1"></i>強み・優れている点
+                            </h6>
+                            <div class="p-3 border rounded bg-light">
+                                {{ evaluation.strengths or '記入されていません' }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h6 class="text-warning">
+                                <i class="bi bi-exclamation-triangle me-1"></i>改善が必要な点
+                            </h6>
+                            <div class="p-3 border rounded bg-light">
+                                {{ evaluation.areas_for_improvement or '記入されていません' }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h6 class="text-primary">
+                                <i class="bi bi-target me-1"></i>次期目標
+                            </h6>
+                            <div class="p-3 border rounded bg-light">
+                                {{ evaluation.goals_next_period or '記入されていません' }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h6 class="text-info">
+                                <i class="bi bi-person-check me-1"></i>評価者コメント
+                            </h6>
+                            <div class="p-3 border rounded bg-light">
+                                {{ evaluation.evaluator_comment or '記入されていません' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- メタ情報 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>評価履歴
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>作成日時:</strong> {{ evaluation.created_at.strftime('%Y年%m月%d日 %H:%M') if evaluation.created_at else '-' }}</p>
+                        {% if evaluation.hr_approved_at %}
+                        <p><strong>人事承認日時:</strong> {{ evaluation.hr_approved_at.strftime('%Y年%m月%d日 %H:%M') }}</p>
+                        <p><strong>人事承認者:</strong> {{ evaluation.hr_approver.email if evaluation.hr_approver else '-' }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>最終更新:</strong> {{ evaluation.updated_at.strftime('%Y年%m月%d日 %H:%M') if evaluation.updated_at else '-' }}</p>
+                        {% if evaluation.director_approved_at %}
+                        <p><strong>取締役承認日時:</strong> {{ evaluation.director_approved_at.strftime('%Y年%m月%d日 %H:%M') }}</p>
+                        <p><strong>取締役承認者:</strong> {{ evaluation.director_approver.email if evaluation.director_approver else '-' }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if evaluation.hr_approval_comment or evaluation.director_approval_comment %}
+                <hr>
+                <div class="row">
+                    {% if evaluation.hr_approval_comment %}
+                    <div class="col-md-6">
+                        <h6 class="text-info">人事承認コメント</h6>
+                        <div class="p-3 border rounded bg-light">
+                            {{ evaluation.hr_approval_comment }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if evaluation.director_approval_comment %}
+                    <div class="col-md-6">
+                        <h6 class="text-success">取締役承認コメント</h6>
+                        <div class="p-3 border rounded bg-light">
+                            {{ evaluation.director_approval_comment }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

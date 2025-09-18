@@ -1,0 +1,15 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: detect-private-key
+      - id: check-added-large-files
+      - id: check-merge-conflict
+
+  - repo: local
+    hooks:
+      - id: block-env-files
+        name: Block .env and config.json
+        entry: bash scripts/block_secrets.sh
+        language: system
+        types: [file]

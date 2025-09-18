@@ -1,0 +1,354 @@
+{% extends 'base.html' %}
+
+{% block title %}給与計算ダッシュボード - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h3 mb-0">
+                        <i class="bi bi-calculator me-2"></i>給与計算ダッシュボード
+                    </h2>
+                    <small class="text-muted">給与計算書作成・給与明細発行</small>
+                </div>
+                <div>
+                    <a href="{{ url_for('payroll_results') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-table me-1"></i>給与計算結果一覧
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 従業員・年月選択 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-person-check me-2"></i>従業員・対象月選択
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="employee_id" class="form-label">従業員</label>
+                            <select name="employee_id" id="employee_id" class="form-select" required>
+                                <option value="">従業員を選択してください</option>
+                                {% for employee in employees %}
+                                <option value="{{ employee.id }}" 
+                                        {% if selected_employee and selected_employee.id == employee.id %}selected{% endif %}>
+                                    {{ employee.name }} ({{ employee.employee_id }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="year" class="form-label">年</label>
+                            <select name="year" id="year" class="form-select" required>
+                                {% for year in years %}
+                                <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>
+                                    {{ year }}年
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="month" class="form-label">月</label>
+                            <select name="month" id="month" class="form-select" required>
+                                {% for month in months %}
+                                <option value="{{ month }}" {% if month == selected_month %}selected{% endif %}>
+                                    {{ month }}月
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-search me-1"></i>表示
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if payroll_data %}
+    <div class="row">
+        <!-- 左側: 勤怠データ -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history me-2"></i>{{ payroll_data.year }}年{{ payroll_data.month }}月 勤怠データ
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if payroll_data.records %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 15%;">日付</th>
+                                    <th style="width: 12%;">法定内</th>
+                                    <th style="width: 12%;">法定内残業</th>
+                                    <th style="width: 13%;">法定外残業</th>
+                                    <th style="width: 12%;">法定休日</th>
+                                    <th style="width: 13%;">法定外休日</th>
+                                    <th style="width: 10%;">深夜</th>
+                                    <th style="width: 13%;">合計</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in payroll_data.records %}
+                                {% set regular = record.regular_working_minutes or 0 %}
+                                {% set legal_overtime = record.legal_overtime_minutes or 0 %}
+                                {% set overtime = record.overtime_minutes or 0 %}
+                                {% set legal_holiday = record.legal_holiday_minutes or 0 %}
+                                {% set holiday = record.holiday_minutes or 0 %}
+                                {% set night = record.night_working_minutes or 0 %}
+                                {% set total = regular + legal_overtime + overtime + legal_holiday + holiday %}
+                                <tr>
+                                    <td>{{ record.work_date.strftime('%m/%d') }}</td>
+                                    <td>{{ "{}:{:02d}".format(regular//60, regular%60) }}</td>
+                                    <td>{{ "{}:{:02d}".format(legal_overtime//60, legal_overtime%60) }}</td>
+                                    <td class="text-warning">{{ "{}:{:02d}".format(overtime//60, overtime%60) }}</td>
+                                    <td class="text-info">{{ "{}:{:02d}".format(legal_holiday//60, legal_holiday%60) }}</td>
+                                    <td>{{ "{}:{:02d}".format(holiday//60, holiday%60) }}</td>
+                                    <td class="text-secondary">{{ "{}:{:02d}".format(night//60, night%60) }}</td>
+                                    <td><strong>{{ "{}:{:02d}".format(total//60, total%60) }}</strong></td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-info border-top border-2 border-primary">
+                                    <td><strong>月間合計</strong></td>
+                                    <td><strong>{{ "{}:{:02d}".format((payroll_data.total_regular or 0)//60, (payroll_data.total_regular or 0)%60) }}</strong></td>
+                                    <td><strong>{{ "{}:{:02d}".format((payroll_data.total_legal_overtime or 0)//60, (payroll_data.total_legal_overtime or 0)%60) }}</strong></td>
+                                    <td class="text-warning"><strong>{{ "{}:{:02d}".format((payroll_data.total_overtime or 0)//60, (payroll_data.total_overtime or 0)%60) }}</strong></td>
+                                    <td class="text-info"><strong>{{ "{}:{:02d}".format((payroll_data.total_legal_holiday or 0)//60, (payroll_data.total_legal_holiday or 0)%60) }}</strong></td>
+                                    <td><strong>{{ "{}:{:02d}".format((payroll_data.total_holiday or 0)//60, (payroll_data.total_holiday or 0)%60) }}</strong></td>
+                                    <td class="text-secondary"><strong>{{ "{}:{:02d}".format((payroll_data.total_night or 0)//60, (payroll_data.total_night or 0)%60) }}</strong></td>
+                                    <td><strong>{{ "{}:{:02d}".format(((payroll_data.total_regular or 0)+(payroll_data.total_legal_overtime or 0)+(payroll_data.total_overtime or 0)+(payroll_data.total_legal_holiday or 0)+(payroll_data.total_holiday or 0))//60, ((payroll_data.total_regular or 0)+(payroll_data.total_legal_overtime or 0)+(payroll_data.total_overtime or 0)+(payroll_data.total_legal_holiday or 0)+(payroll_data.total_holiday or 0))%60) }}</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-calendar-x display-4 text-muted"></i>
+                        <p class="mt-2 text-muted">該当月の勤怠データがありません</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 右側: 給与設定・計算結果 -->
+        <div class="col-md-6">
+            <!-- 給与設定 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-gear me-2"></i>給与設定
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if payroll_data.settings %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">給与形態</label>
+                            <p class="fw-bold">
+                                {% if payroll_data.settings and payroll_data.settings.wage_type == 'monthly' %}月給制
+                                {% elif payroll_data.settings and payroll_data.settings.wage_type == 'daily' %}日給制
+                                {% elif payroll_data.settings and payroll_data.settings.wage_type == 'hourly' %}時給制
+                                {% elif payroll_data.settings and payroll_data.settings.wage_type %}{{ payroll_data.settings.wage_type }}
+                                {% else %}月給制{% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">基本給</label>
+                            <p class="fw-bold">¥{{ "{:,}".format(payroll_data.settings.base_salary or 0) }}</p>
+                        </div>
+                        {% if payroll_data.settings and payroll_data.settings.transportation_allowance and payroll_data.settings.transportation_allowance > 0 %}
+                        <div class="col-md-6">
+                            <label class="form-label">交通費</label>
+                            <p class="fw-bold">¥{{ "{:,}".format(payroll_data.settings.transportation_allowance or 0) }}</p>
+                        </div>
+                        {% endif %}
+                        {% if payroll_data.settings and payroll_data.settings.position_allowance and payroll_data.settings.position_allowance > 0 %}
+                        <div class="col-md-6">
+                            <label class="form-label">役職手当</label>
+                            <p class="fw-bold">¥{{ "{:,}".format(payroll_data.settings.position_allowance or 0) }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mt-3">
+                        <a href="{{ url_for('employee_payroll_settings', employee_id=payroll_data.employee.id) }}" 
+                           class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-pencil me-1"></i>給与設定編集
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-exclamation-triangle display-4 text-warning"></i>
+                        <p class="mt-2 text-muted">給与設定が登録されていません</p>
+                        <a href="{{ url_for('employee_payroll_settings', employee_id=payroll_data.employee.id) }}" 
+                           class="btn btn-warning">
+                            <i class="bi bi-plus me-1"></i>給与設定を登録
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 給与計算結果 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-calculator me-2"></i>給与計算結果
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if payroll_data.calculation %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tbody>
+                                <!-- 基本給 -->
+                                <tr>
+                                    <td><strong>基本給</strong></td>
+                                    <td class="text-end"><strong>¥{{ "{:,}".format((payroll_data.calculation.base_salary or 0)|int) }}</strong></td>
+                                </tr>
+                                
+                                <!-- 手当類 -->
+                                {% if payroll_data.settings and payroll_data.settings.transportation_allowance and payroll_data.settings.transportation_allowance > 0 %}
+                                <tr>
+                                    <td>交通費</td>
+                                    <td class="text-end">¥{{ "{:,}".format((payroll_data.settings.transportation_allowance or 0)|int) }}</td>
+                                </tr>
+                                {% endif %}
+                                
+                                {% if payroll_data.settings and payroll_data.settings.position_allowance and payroll_data.settings.position_allowance > 0 %}
+                                <tr>
+                                    <td>役職手当</td>
+                                    <td class="text-end">¥{{ "{:,}".format((payroll_data.settings.position_allowance or 0)|int) }}</td>
+                                </tr>
+                                {% endif %}
+                                
+                                <!-- 時間外手当類 -->
+                                {% if payroll_data.calculation.overtime_allowance and payroll_data.calculation.overtime_allowance > 0 %}
+                                <tr>
+                                    <td>法定外残業手当 ({{ "{:,}".format((payroll_data.total_overtime or 0)//60) }}h{{ "{:02d}".format((payroll_data.total_overtime or 0)%60) }}m)</td>
+                                    <td class="text-end">¥{{ "{:,}".format((payroll_data.calculation.overtime_allowance or 0)|int) }}</td>
+                                </tr>
+                                {% endif %}
+                                
+                                {% if payroll_data.calculation.holiday_allowance and payroll_data.calculation.holiday_allowance > 0 %}
+                                <tr>
+                                    <td>法定外休日労働手当 ({{ "{:,}".format((payroll_data.total_legal_holiday or 0)//60) }}h{{ "{:02d}".format((payroll_data.total_legal_holiday or 0)%60) }}m)</td>
+                                    <td class="text-end">¥{{ "{:,}".format((payroll_data.calculation.holiday_allowance or 0)|int) }}</td>
+                                </tr>
+                                {% endif %}
+                                
+                                {% if payroll_data.calculation.night_allowance and payroll_data.calculation.night_allowance > 0 %}
+                                <tr>
+                                    <td>深夜労働手当 ({{ "{:,}".format((payroll_data.total_night or 0)//60) }}h{{ "{:02d}".format((payroll_data.total_night or 0)%60) }}m)</td>
+                                    <td class="text-end">¥{{ "{:,}".format((payroll_data.calculation.night_allowance or 0)|int) }}</td>
+                                </tr>
+                                {% endif %}
+                                
+                                <!-- 合計 -->
+                                <tr class="table-primary">
+                                    <td><strong>総支給額</strong></td>
+                                    <td class="text-end"><strong>¥{{ "{:,}".format((payroll_data.calculation.gross_salary or 0)|int) }}</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('create_payroll_slip', employee_id=payroll_data.employee.id, year=payroll_data.year, month=payroll_data.month) }}" 
+                           class="btn btn-success">
+                            <i class="bi bi-file-earmark-text me-1"></i>給与明細書作成
+                        </a>
+                        <button type="button" class="btn btn-primary" onclick="recalculatePayroll()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>給与再計算
+                        </button>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-calculator display-4 text-muted"></i>
+                        <p class="mt-2 text-muted">給与計算がまだ実行されていません</p>
+                        {% if payroll_data.records and payroll_data.settings %}
+                        <button type="button" class="btn btn-primary" onclick="calculatePayroll()">
+                            <i class="bi bi-calculator me-1"></i>給与計算実行
+                        </button>
+                        {% else %}
+                        <p class="text-muted small">勤怠データと給与設定が必要です</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-person-plus display-1 text-muted"></i>
+                    <p class="lead text-muted mt-3">従業員、年月を選択して給与計算を開始してください。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function calculatePayroll() {
+    if (!confirm('給与計算を実行しますか？')) return;
+    
+    const employeeId = document.getElementById('employee_id').value;
+    const year = document.getElementById('year').value;
+    const month = document.getElementById('month').value;
+    
+    fetch('/api/calculate_payroll', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            employee_id: employeeId,
+            year: parseInt(year),
+            month: parseInt(month)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('給与計算が完了しました');
+            location.reload();
+        } else {
+            if (data.redirect && data.error.includes('給与設定')) {
+                if (confirm(data.error + '\n\n給与設定画面に移動しますか？')) {
+                    window.location.href = data.redirect;
+                }
+            } else {
+                alert('給与計算でエラーが発生しました: ' + data.error);
+            }
+        }
+    })
+    .catch(error => {
+        alert('給与計算でエラーが発生しました: ' + error);
+    });
+}
+
+function recalculatePayroll() {
+    if (!confirm('給与を再計算しますか？既存の計算結果は上書きされます。')) return;
+    calculatePayroll();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}各種届出管理 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="text-center">
+                <h1 class="h2 mb-2">
+                    <i class="bi bi-file-earmark-text me-2"></i>各種届出管理
+                </h1>
+                <p class="text-muted mb-0">企業の労務管理に必要な各種届出を管理します</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 届出管理パネル -->
+    <div class="row g-4">
+        <!-- 1. 入退社関連 -->
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 border-success">
+                <div class="card-header bg-success bg-opacity-10">
+                    <h5 class="card-title mb-0 text-success">
+                        <i class="bi bi-person-check me-2"></i>入退社関連
+                    </h5>
+                </div>
+                <div class="card-body text-center d-flex flex-column">
+                    <i class="bi bi-person-check display-4 text-success mb-3"></i>
+                    <p class="card-text flex-grow-1">
+                        入社届、退職届、雇用契約書等の管理
+                    </p>
+                    <div class="mt-auto">
+                        <div class="btn-group-vertical d-grid gap-2">
+                            <button type="button" class="btn btn-outline-success" onclick="alert('入社届機能は開発中です')">
+                                <i class="bi bi-person-plus me-2"></i>入社届
+                            </button>
+                            <button type="button" class="btn btn-outline-success" onclick="alert('退職届機能は開発中です')">
+                                <i class="bi bi-person-dash me-2"></i>退職届
+                            </button>
+                            <a href="{{ url_for('employment_contract') }}" class="btn btn-success">
+                                <i class="bi bi-file-text me-2"></i>雇用契約書
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 労働条件変更 -->
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 border-warning">
+                <div class="card-header bg-warning bg-opacity-10">
+                    <h5 class="card-title mb-0 text-warning">
+                        <i class="bi bi-arrow-repeat me-2"></i>労働条件変更
+                    </h5>
+                </div>
+                <div class="card-body text-center d-flex flex-column">
+                    <i class="bi bi-arrow-repeat display-4 text-warning mb-3"></i>
+                    <p class="card-text flex-grow-1">
+                        労働条件変更通知書、配置転換届等
+                    </p>
+                    <div class="mt-auto">
+                        <div class="btn-group-vertical d-grid gap-2">
+                            <a href="{{ url_for('working_conditions_change') }}" class="btn btn-outline-warning">
+                                <i class="bi bi-file-earmark-arrow-up me-2"></i>通知書作成
+                            </a>
+                            <button type="button" class="btn btn-outline-warning" onclick="alert('配置転換機能は開発中です')">
+                                <i class="bi bi-arrow-left-right me-2"></i>配置転換
+                            </button>
+                            <button type="button" class="btn btn-warning" onclick="alert('昇給昇格機能は開発中です')">
+                                <i class="bi bi-arrow-up-circle me-2"></i>昇給昇格
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 社会保険関連 -->
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 border-info">
+                <div class="card-header bg-info bg-opacity-10">
+                    <h5 class="card-title mb-0 text-info">
+                        <i class="bi bi-shield-check me-2"></i>社会保険関連
+                    </h5>
+                </div>
+                <div class="card-body text-center d-flex flex-column">
+                    <i class="bi bi-shield-check display-4 text-info mb-3"></i>
+                    <p class="card-text flex-grow-1">
+                        被保険者資格取得・喪失届等
+                    </p>
+                    <div class="mt-auto">
+                        <div class="btn-group-vertical d-grid gap-2">
+                            <a href="{{ url_for('social_insurance_acquisition') }}" class="btn btn-outline-info">
+                                <i class="bi bi-plus-circle me-2"></i>資格取得
+                            </a>
+                            <a href="{{ url_for('social_insurance_loss') }}" class="btn btn-outline-info">
+                                <i class="bi bi-dash-circle me-2"></i>資格喪失
+                            </a>
+                            <a href="{{ url_for('social_insurance_change') }}" class="btn btn-info">
+                                <i class="bi bi-pencil-square me-2"></i>変更届
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 労働基準関連 -->
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 border-danger">
+                <div class="card-header bg-danger bg-opacity-10">
+                    <h5 class="card-title mb-0 text-danger">
+                        <i class="bi bi-clock me-2"></i>労働基準関連
+                    </h5>
+                </div>
+                <div class="card-body text-center d-flex flex-column">
+                    <i class="bi bi-clock display-4 text-danger mb-3"></i>
+                    <p class="card-text flex-grow-1">
+                        36協定、法定休日、就業規則等
+                    </p>
+                    <div class="mt-auto">
+                        <div class="btn-group-vertical d-grid gap-2">
+                            <a href="{{ url_for('general_affairs_36agreement') }}" class="btn btn-outline-danger">
+                                <i class="bi bi-clock-history me-2"></i>36協定
+                            </a>
+                            <button type="button" class="btn btn-outline-danger" onclick="alert('就業規則機能は開発中です')">
+                                <i class="bi bi-book me-2"></i>就業規則
+                            </button>
+                            <button type="button" class="btn btn-danger" onclick="alert('安全衛生機能は開発中です')">
+                                <i class="bi bi-shield-fill-check me-2"></i>安全衛生
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. 雇用保険関連 -->
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 border-primary">
+                <div class="card-header bg-primary bg-opacity-10">
+                    <h5 class="card-title mb-0 text-primary">
+                        <i class="bi bi-umbrella me-2"></i>雇用保険関連
+                    </h5>
+                </div>
+                <div class="card-body text-center d-flex flex-column">
+                    <i class="bi bi-umbrella display-4 text-primary mb-3"></i>
+                    <p class="card-text flex-grow-1">
+                        雇用保険被保険者資格取得・喪失届等
+                    </p>
+                    <div class="mt-auto">
+                        <div class="btn-group-vertical d-grid gap-2">
+                            <button type="button" class="btn btn-outline-primary" onclick="alert('雇用保険取得機能は開発中です')">
+                                <i class="bi bi-plus-square me-2"></i>資格取得
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" onclick="alert('雇用保険喪失機能は開発中です')">
+                                <i class="bi bi-dash-square me-2"></i>資格喪失
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="alert('離職証明書機能は開発中です')">
+                                <i class="bi bi-file-earmark me-2"></i>離職証明書
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. 給与関連 -->
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 border-secondary">
+                <div class="card-header bg-secondary bg-opacity-10">
+                    <h5 class="card-title mb-0 text-secondary">
+                        <i class="bi bi-currency-yen me-2"></i>給与関連
+                    </h5>
+                </div>
+                <div class="card-body text-center d-flex flex-column">
+                    <i class="bi bi-currency-yen display-4 text-secondary mb-3"></i>
+                    <p class="card-text flex-grow-1">
+                        給与所得者扶養控除等申告書等
+                    </p>
+                    <div class="mt-auto">
+                        <div class="btn-group-vertical d-grid gap-2">
+                            <button type="button" class="btn btn-outline-secondary" onclick="alert('扶養控除申告書機能は開発中です')">
+                                <i class="bi bi-people me-2"></i>扶養控除申告書
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="alert('年末調整機能は開発中です')">
+                                <i class="bi bi-calendar-check me-2"></i>年末調整
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="alert('源泉徴収票機能は開発中です')">
+                                <i class="bi bi-receipt me-2"></i>源泉徴収票
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- アクションボタン -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-gear me-2"></i>管理機能
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-12 col-md-6 col-lg-3 mb-3">
+                            <button type="button" class="btn btn-outline-primary w-100" onclick="alert('届出一覧機能は開発中です')">
+                                <i class="bi bi-list-ul me-2"></i>届出一覧
+                            </button>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3 mb-3">
+                            <button type="button" class="btn btn-outline-success w-100" onclick="alert('テンプレート機能は開発中です')">
+                                <i class="bi bi-file-earmark-plus me-2"></i>テンプレート
+                            </button>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3 mb-3">
+                            <button type="button" class="btn btn-outline-warning w-100" onclick="alert('進捗管理機能は開発中です')">
+                                <i class="bi bi-bar-chart me-2"></i>進捗管理
+                            </button>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3 mb-3">
+                            <button type="button" class="btn btn-outline-info w-100" onclick="alert('印刷機能は開発中です')">
+                                <i class="bi bi-printer me-2"></i>印刷機能
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

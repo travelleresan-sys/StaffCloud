@@ -1,0 +1,610 @@
+{% extends "base.html" %}
+
+{% block title %}財務諸表 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-file-earmark-spreadsheet me-2"></i>財務諸表
+                </h1>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('accounting_dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 年度選択 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="year" class="form-label">対象年度</label>
+                            <select class="form-select" id="year" name="year">
+                                {% for year in years %}
+                                <option value="{{ year }}" {{ 'selected' if year == selected_year else '' }}>{{ year }}年</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="bi bi-search me-1"></i>表示
+                            </button>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown">
+                                    <i class="bi bi-file-earmark-excel me-1"></i>Excel出力
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="{{ url_for('export_financial_statements_excel', year=selected_year, type='all') }}">
+                                        <i class="bi bi-file-earmark-excel me-1"></i>全ての財務諸表
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('export_financial_statements_excel', year=selected_year, type='balance_sheet') }}">
+                                        <i class="bi bi-bar-chart me-1"></i>貸借対照表
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('export_financial_statements_excel', year=selected_year, type='income_statement') }}">
+                                        <i class="bi bi-graph-up me-1"></i>損益計算書
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('export_financial_statements_excel', year=selected_year, type='cash_flow') }}">
+                                        <i class="bi bi-cash-stack me-1"></i>キャッシュフロー計算書
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('export_financial_statements_excel', year=selected_year, type='equity_change') }}">
+                                        <i class="bi bi-graph-up-arrow me-1"></i>株主資本等変動計算書
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('export_financial_statements_excel', year=selected_year, type='notes') }}">
+                                        <i class="bi bi-file-text me-1"></i>附属明細書
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- タブナビゲーション -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <ul class="nav nav-tabs" id="financialTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="balance-sheet-tab" data-bs-toggle="tab" data-bs-target="#balance-sheet" type="button" role="tab">
+                        <i class="bi bi-bar-chart me-1"></i>貸借対照表・損益計算書
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="cash-flow-tab" data-bs-toggle="tab" data-bs-target="#cash-flow" type="button" role="tab">
+                        <i class="bi bi-cash-stack me-1"></i>キャッシュフロー計算書
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="equity-change-tab" data-bs-toggle="tab" data-bs-target="#equity-change" type="button" role="tab">
+                        <i class="bi bi-graph-up me-1"></i>株主資本等変動計算書
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes" type="button" role="tab">
+                        <i class="bi bi-file-text me-1"></i>附属明細書
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="tab-content" id="financialTabContent">
+        <!-- 貸借対照表・損益計算書タブ -->
+        <div class="tab-pane fade show active" id="balance-sheet" role="tabpanel">
+            <div class="row">
+                <!-- 貸借対照表 -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-bar-chart me-2"></i>貸借対照表（{{ selected_year }}年）
+                            </h5>
+                        </div>
+                <div class="card-body">
+                    <!-- 資産の部 -->
+                    <h6 class="text-primary border-bottom pb-2">資産の部</h6>
+                    {% set total_assets = 0 %}
+                    {% for asset in assets %}
+                    {% set total_assets = total_assets + asset.balance %}
+                    <div class="d-flex justify-content-between">
+                        <span>{{ asset.account_name }}</span>
+                        <span class="text-end">{{ "{:,}".format(asset.balance) }}</span>
+                    </div>
+                    {% endfor %}
+                    {% if not assets %}
+                    <p class="text-muted small">データがありません</p>
+                    {% endif %}
+                    <hr>
+                    <div class="d-flex justify-content-between fw-bold">
+                        <span>資産合計</span>
+                        <span class="text-end">{{ "{:,}".format(total_assets) }}</span>
+                    </div>
+
+                    <br>
+                    
+                    <!-- 負債の部 -->
+                    <h6 class="text-warning border-bottom pb-2">負債の部</h6>
+                    {% set total_liabilities = 0 %}
+                    {% for liability in liabilities %}
+                    {% set total_liabilities = total_liabilities + liability.balance %}
+                    <div class="d-flex justify-content-between">
+                        <span>{{ liability.account_name }}</span>
+                        <span class="text-end">{{ "{:,}".format(liability.balance) }}</span>
+                    </div>
+                    {% endfor %}
+                    {% if not liabilities %}
+                    <p class="text-muted small">データがありません</p>
+                    {% endif %}
+                    <hr>
+                    <div class="d-flex justify-content-between fw-bold">
+                        <span>負債合計</span>
+                        <span class="text-end">{{ "{:,}".format(total_liabilities) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 損益計算書 -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-graph-up me-2"></i>損益計算書（{{ selected_year }}年）
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- 収益の部 -->
+                    <h6 class="text-success border-bottom pb-2">収益の部</h6>
+                    {% set total_revenues = 0 %}
+                    {% for revenue in revenues %}
+                    {% set total_revenues = total_revenues + revenue.balance %}
+                    <div class="d-flex justify-content-between">
+                        <span>{{ revenue.account_name }}</span>
+                        <span class="text-end">{{ "{:,}".format(revenue.balance) }}</span>
+                    </div>
+                    {% endfor %}
+                    {% if not revenues %}
+                    <p class="text-muted small">データがありません</p>
+                    {% endif %}
+                    <hr>
+                    <div class="d-flex justify-content-between fw-bold">
+                        <span>収益合計</span>
+                        <span class="text-end">{{ "{:,}".format(total_revenues) }}</span>
+                    </div>
+
+                    <br>
+
+                    <!-- 費用の部 -->
+                    <h6 class="text-danger border-bottom pb-2">費用の部</h6>
+                    {% set total_expenses = 0 %}
+                    {% for expense in expenses %}
+                    {% set total_expenses = total_expenses + expense.balance %}
+                    <div class="d-flex justify-content-between">
+                        <span>{{ expense.account_name }}</span>
+                        <span class="text-end">{{ "{:,}".format(expense.balance) }}</span>
+                    </div>
+                    {% endfor %}
+                    {% if not expenses %}
+                    <p class="text-muted small">データがありません</p>
+                    {% endif %}
+                    <hr>
+                    <div class="d-flex justify-content-between fw-bold">
+                        <span>費用合計</span>
+                        <span class="text-end">{{ "{:,}".format(total_expenses) }}</span>
+                    </div>
+
+                    <hr class="border-2">
+                    {% set net_income = total_revenues - total_expenses %}
+                    <div class="d-flex justify-content-between fw-bold fs-5 {{ 'text-success' if net_income >= 0 else 'text-danger' }}">
+                        <span>当期純利益</span>
+                        <span class="text-end">{{ "{:,}".format(net_income) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+            <!-- 要約情報 -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-info-circle me-2"></i>財務サマリー（{{ selected_year }}年）
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-md-3">
+                                    <div class="border-end">
+                                        <h4 class="text-primary">{{ "{:,}".format(total_assets) }}</h4>
+                                        <p class="text-muted mb-0">総資産</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="border-end">
+                                        <h4 class="text-warning">{{ "{:,}".format(total_liabilities) }}</h4>
+                                        <p class="text-muted mb-0">総負債</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="border-end">
+                                        <h4 class="text-success">{{ "{:,}".format(total_revenues) }}</h4>
+                                        <p class="text-muted mb-0">総収益</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <h4 class="{{ 'text-success' if net_income >= 0 else 'text-danger' }}">
+                                        {{ "{:,}".format(net_income) }}
+                                    </h4>
+                                    <p class="text-muted mb-0">当期純利益</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- キャッシュフロー計算書タブ -->
+        <div class="tab-pane fade" id="cash-flow" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-cash-stack me-2"></i>キャッシュフロー計算書（{{ selected_year }}年）
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- 営業活動によるキャッシュフロー -->
+                                <div class="col-md-4">
+                                    <h6 class="text-info border-bottom pb-2">営業活動によるキャッシュフロー</h6>
+                                    <div class="d-flex justify-content-between">
+                                        <span>税引前当期純利益</span>
+                                        <span class="text-end">{{ "{:,}".format(cash_flow.operating.pre_tax_income if cash_flow else 0) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>減価償却費</span>
+                                        <span class="text-end">{{ "{:,}".format(cash_flow.operating.depreciation if cash_flow else 0) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>売上債権の増減額</span>
+                                        <span class="text-end">{{ "{:,}".format(cash_flow.operating.receivables_change if cash_flow else 0) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>仕入債務の増減額</span>
+                                        <span class="text-end">{{ "{:,}".format(cash_flow.operating.payables_change if cash_flow else 0) }}</span>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between fw-bold">
+                                        <span>営業活動によるキャッシュフロー</span>
+                                        <span class="text-end">{{ "{:,}".format(cash_flow.operating.total if cash_flow else 0) }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- 投資活動によるキャッシュフロー -->
+                                <div class="col-md-4">
+                                    <h6 class="text-warning border-bottom pb-2">投資活動によるキャッシュフロー</h6>
+                                    <div class="d-flex justify-content-between">
+                                        <span>有形固定資産の取得による支出</span>
+                                        <span class="text-end">{{ "{:,}".format(cash_flow.investing.asset_purchase if cash_flow else 0) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>有形固定資産の売却による収入</span>
+                                        <span class="text-end">{{ "{:,}".format(cash_flow.investing.asset_sale if cash_flow else 0) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>投資有価証券の取得による支出</span>
+                                        <span class="text-end">{{ "{:,}".format(cash_flow.investing.securities_purchase if cash_flow else 0) }}</span>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between fw-bold">
+                                        <span>投資活動によるキャッシュフロー</span>
+                                        <span class="text-end">{{ "{:,}".format(cash_flow.investing.total if cash_flow else 0) }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- 財務活動によるキャッシュフロー -->
+                                <div class="col-md-4">
+                                    <h6 class="text-success border-bottom pb-2">財務活動によるキャッシュフロー</h6>
+                                    <div class="d-flex justify-content-between">
+                                        <span>借入金の増加額</span>
+                                        <span class="text-end">{{ "{:,}".format(cash_flow.financing.loan_increase if cash_flow else 0) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>借入金の返済による支出</span>
+                                        <span class="text-end">{{ "{:,}".format(cash_flow.financing.loan_repayment if cash_flow else 0) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>配当金の支払額</span>
+                                        <span class="text-end">{{ "{:,}".format(cash_flow.financing.dividend_payment if cash_flow else 0) }}</span>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between fw-bold">
+                                        <span>財務活動によるキャッシュフロー</span>
+                                        <span class="text-end">{{ "{:,}".format(cash_flow.financing.total if cash_flow else 0) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="border-2 my-4">
+                            
+                            <!-- 現金および現金同等物の増減額 -->
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="text-center">
+                                        {% set cash_change = cash_flow.operating.total + cash_flow.investing.total + cash_flow.financing.total if cash_flow else 0 %}
+                                        <h5 class="fw-bold {{ 'text-success' if cash_change >= 0 else 'text-danger' }}">
+                                            現金および現金同等物の増減額: {{ "{:,}".format(cash_change) }}円
+                                        </h5>
+                                        <div class="row mt-3">
+                                            <div class="col-6">
+                                                <p class="mb-0">期首現金および現金同等物</p>
+                                                <h6>{{ "{:,}".format(cash_flow.beginning_cash if cash_flow else 0) }}円</h6>
+                                            </div>
+                                            <div class="col-6">
+                                                <p class="mb-0">期末現金および現金同等物</p>
+                                                <h6>{{ "{:,}".format(cash_flow.ending_cash if cash_flow else 0) }}円</h6>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 株主資本等変動計算書タブ -->
+        <div class="tab-pane fade" id="equity-change" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-graph-up me-2"></i>株主資本等変動計算書（{{ selected_year }}年）
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th rowspan="2" class="align-middle"></th>
+                                            <th colspan="4" class="text-center">株主資本</th>
+                                            <th rowspan="2" class="align-middle">株主資本合計</th>
+                                        </tr>
+                                        <tr>
+                                            <th>資本金</th>
+                                            <th>資本剰余金</th>
+                                            <th>利益剰余金</th>
+                                            <th>自己株式</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="fw-bold">当期首残高</td>
+                                            <td class="text-end">{{ "{:,}".format(equity_change.beginning.capital if equity_change else 0) }}</td>
+                                            <td class="text-end">{{ "{:,}".format(equity_change.beginning.capital_surplus if equity_change else 0) }}</td>
+                                            <td class="text-end">{{ "{:,}".format(equity_change.beginning.retained_earnings if equity_change else 0) }}</td>
+                                            <td class="text-end">{{ "{:,}".format(equity_change.beginning.treasury_stock if equity_change else 0) }}</td>
+                                            <td class="text-end fw-bold">{{ "{:,}".format(equity_change.beginning.total if equity_change else 0) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="6" class="table-secondary fw-bold">当期変動額</td>
+                                        </tr>
+                                        <tr>
+                                            <td>&nbsp;&nbsp;剰余金の配当</td>
+                                            <td class="text-end">-</td>
+                                            <td class="text-end">-</td>
+                                            <td class="text-end">{{ "{:,}".format(equity_change.changes.dividend if equity_change else 0) }}</td>
+                                            <td class="text-end">-</td>
+                                            <td class="text-end">{{ "{:,}".format(equity_change.changes.dividend if equity_change else 0) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>&nbsp;&nbsp;当期純利益</td>
+                                            <td class="text-end">-</td>
+                                            <td class="text-end">-</td>
+                                            <td class="text-end">{{ "{:,}".format(equity_change.changes.net_income if equity_change else 0) }}</td>
+                                            <td class="text-end">-</td>
+                                            <td class="text-end">{{ "{:,}".format(equity_change.changes.net_income if equity_change else 0) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-bold">当期変動額合計</td>
+                                            <td class="text-end">{{ "{:,}".format(equity_change.changes.capital_change if equity_change else 0) }}</td>
+                                            <td class="text-end">{{ "{:,}".format(equity_change.changes.surplus_change if equity_change else 0) }}</td>
+                                            <td class="text-end">{{ "{:,}".format(equity_change.changes.earnings_change if equity_change else 0) }}</td>
+                                            <td class="text-end">{{ "{:,}".format(equity_change.changes.treasury_change if equity_change else 0) }}</td>
+                                            <td class="text-end fw-bold">{{ "{:,}".format(equity_change.changes.total if equity_change else 0) }}</td>
+                                        </tr>
+                                        <tr class="table-primary">
+                                            <td class="fw-bold">当期末残高</td>
+                                            <td class="text-end fw-bold">{{ "{:,}".format(equity_change.ending.capital if equity_change else 0) }}</td>
+                                            <td class="text-end fw-bold">{{ "{:,}".format(equity_change.ending.capital_surplus if equity_change else 0) }}</td>
+                                            <td class="text-end fw-bold">{{ "{:,}".format(equity_change.ending.retained_earnings if equity_change else 0) }}</td>
+                                            <td class="text-end fw-bold">{{ "{:,}".format(equity_change.ending.treasury_stock if equity_change else 0) }}</td>
+                                            <td class="text-end fw-bold">{{ "{:,}".format(equity_change.ending.total if equity_change else 0) }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 附属明細書タブ -->
+        <div class="tab-pane fade" id="notes" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-secondary text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-file-text me-2"></i>附属明細書（{{ selected_year }}年）
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- 有形固定資産等明細書 -->
+                                <div class="col-12 mb-4">
+                                    <h6 class="text-secondary border-bottom pb-2">有形固定資産等明細書</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>資産の種類</th>
+                                                    <th>期首帳簿価額</th>
+                                                    <th>当期増加額</th>
+                                                    <th>当期減少額</th>
+                                                    <th>期末帳簿価額</th>
+                                                    <th>減価償却累計額</th>
+                                                    <th>期末取得価額</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for asset in fixed_assets if fixed_assets %}
+                                                <tr>
+                                                    <td>{{ asset.asset_type }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(asset.beginning_book_value) }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(asset.increase) }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(asset.decrease) }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(asset.ending_book_value) }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(asset.accumulated_depreciation) }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(asset.acquisition_cost) }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                                {% if not fixed_assets %}
+                                                <tr>
+                                                    <td colspan="7" class="text-center text-muted">データがありません</td>
+                                                </tr>
+                                                {% endif %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- 社債明細書 -->
+                                <div class="col-md-6 mb-4">
+                                    <h6 class="text-secondary border-bottom pb-2">社債明細書</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>銘柄</th>
+                                                    <th>期首残高</th>
+                                                    <th>当期増減</th>
+                                                    <th>期末残高</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for bond in bonds if bonds %}
+                                                <tr>
+                                                    <td>{{ bond.name }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(bond.beginning_balance) }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(bond.change) }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(bond.ending_balance) }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                                {% if not bonds %}
+                                                <tr>
+                                                    <td colspan="4" class="text-center text-muted">データがありません</td>
+                                                </tr>
+                                                {% endif %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- 借入金明細書 -->
+                                <div class="col-md-6 mb-4">
+                                    <h6 class="text-secondary border-bottom pb-2">借入金明細書</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>借入先</th>
+                                                    <th>期首残高</th>
+                                                    <th>当期増減</th>
+                                                    <th>期末残高</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for loan in loans if loans %}
+                                                <tr>
+                                                    <td>{{ loan.lender }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(loan.beginning_balance) }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(loan.change) }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(loan.ending_balance) }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                                {% if not loans %}
+                                                <tr>
+                                                    <td colspan="4" class="text-center text-muted">データがありません</td>
+                                                </tr>
+                                                {% endif %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- 引当金明細書 -->
+                                <div class="col-12">
+                                    <h6 class="text-secondary border-bottom pb-2">引当金明細書</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>科目</th>
+                                                    <th>期首残高</th>
+                                                    <th>当期増加額</th>
+                                                    <th>当期減少額（目的使用）</th>
+                                                    <th>当期減少額（その他）</th>
+                                                    <th>期末残高</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for reserve in reserves if reserves %}
+                                                <tr>
+                                                    <td>{{ reserve.account_name }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(reserve.beginning_balance) }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(reserve.increase) }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(reserve.purpose_decrease) }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(reserve.other_decrease) }}</td>
+                                                    <td class="text-end">{{ "{:,}".format(reserve.ending_balance) }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                                {% if not reserves %}
+                                                <tr>
+                                                    <td colspan="6" class="text-center text-muted">データがありません</td>
+                                                </tr>
+                                                {% endif %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

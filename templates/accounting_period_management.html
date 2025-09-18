@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}会計年度管理 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-calendar3 me-2"></i>会計年度管理
+                </h1>
+                <a href="{{ url_for('accounting_dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>戻る
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 会計年度設定情報 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-gear me-2"></i>会計年度設定
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">
+                        <strong>会計年度開始日:</strong> {{ fiscal_start_month }}月{{ fiscal_start_day }}日
+                        <small class="text-muted ms-2">
+                            ※企業情報画面で変更できます
+                        </small>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新規会計年度作成 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-plus-circle me-2"></i>新規会計年度作成
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('create_accounting_period') }}" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="fiscal_year" class="form-label">会計年度</label>
+                            <input type="number" class="form-control" id="fiscal_year" name="fiscal_year" 
+                                   min="2020" max="2030" value="{{ current_year }}" required>
+                            <div class="form-text">例: 2024年度 → 2024-04-01～2025-03-31</div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus me-1"></i>作成
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 会計年度一覧 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list me-2"></i>会計年度一覧
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if periods %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>会計年度</th>
+                                    <th>期間</th>
+                                    <th>状態</th>
+                                    <th>締め処理日</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for period in periods %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ period.fiscal_year }}年度</strong>
+                                    </td>
+                                    <td>
+                                        {{ period.start_date.strftime('%Y年%m月%d日') }} ～ 
+                                        {{ period.end_date.strftime('%Y年%m月%d日') }}
+                                    </td>
+                                    <td>
+                                        {% if period.is_closed %}
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-lock me-1"></i>締め済み
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-unlock me-1"></i>未締め
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if period.closing_date %}
+                                        {{ period.closing_date.strftime('%Y/%m/%d %H:%M') }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if not period.is_closed %}
+                                        <button type="button" class="btn btn-warning btn-sm" 
+                                                data-bs-toggle="modal" data-bs-target="#carryoverModal"
+                                                data-from-year="{{ period.fiscal_year }}"
+                                                data-to-year="{{ period.fiscal_year + 1 }}">
+                                            <i class="bi bi-arrow-right me-1"></i>繰越処理
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-calendar3 display-1"></i>
+                        <p class="mt-3">会計年度が作成されていません。</p>
+                        <p>上記のフォームから新規作成してください。</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 繰越処理モーダル -->
+<div class="modal fade" id="carryoverModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-right me-2"></i>繰越処理
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('carryover_balances') }}">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>注意:</strong> 繰越処理を実行すると、繰越元年度は締め済みとなり、修正できなくなります。
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="from_year" class="form-label">繰越元年度</label>
+                        <input type="number" class="form-control" id="from_year" name="from_year" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="to_year" class="form-label">繰越先年度</label>
+                        <input type="number" class="form-control" id="to_year" name="to_year" readonly>
+                        <div class="form-text">
+                            繰越先年度が作成されていない場合は、先に年度を作成してください。
+                        </div>
+                    </div>
+                    
+                    <p class="mb-0">
+                        <strong>処理内容:</strong><br>
+                        ・資産、負債、純資産科目の期末残高を計算<br>
+                        ・繰越先年度の期首残高として設定<br>
+                        ・繰越元年度を締め済みに変更
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        キャンセル
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-arrow-right me-1"></i>繰越実行
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// 繰越処理モーダルでの年度設定
+document.addEventListener('DOMContentLoaded', function() {
+    const carryoverModal = document.getElementById('carryoverModal');
+    const fromYearInput = document.getElementById('from_year');
+    const toYearInput = document.getElementById('to_year');
+    
+    carryoverModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const fromYear = button.getAttribute('data-from-year');
+        const toYear = button.getAttribute('data-to-year');
+        
+        fromYearInput.value = fromYear;
+        toYearInput.value = toYear;
+    });
+});
+</script>
+{% endblock %}

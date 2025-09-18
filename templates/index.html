@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid min-vh-100 d-flex align-items-start justify-content-center bg-light pt-5">
+    <div class="row w-100">
+        <div class="col-md-6 mx-auto">
+            <!-- システムタイトル -->
+            <div class="text-center mb-5">
+                <h1 class="display-4 mb-3 text-primary">
+                    <i class="bi bi-cloud me-3"></i>StaffCloud
+                </h1>
+                <p class="lead text-muted">Employee Management System</p>
+            </div>
+
+            <!-- ログイン選択カード -->
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <h3 class="card-title text-center mb-4">
+                        <i class="bi bi-person-check me-2"></i>ログイン方法を選択してください
+                    </h3>
+                    
+                    <div class="row g-3">
+                        <!-- 総務事務ログイン -->
+                        <div class="col-12 col-lg-6">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body text-center d-flex flex-column">
+                                    <i class="bi bi-building-gear display-3 text-primary mb-3"></i>
+                                    <h5 class="card-title">総務事務ログイン</h5>
+                                    <p class="card-text flex-grow-1">
+                                        企業情報管理、36協定管理、法定休日設定、<br>
+                                        カレンダー管理などが行えます。
+                                    </p>
+                                    <a href="{{ url_for('admin_login') }}" class="btn btn-primary btn-lg w-100">
+                                        <i class="bi bi-shield-lock me-2"></i>Login
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 人事事務ログイン -->
+                        <div class="col-12 col-lg-6">
+                            <div class="card h-100 border-info">
+                                <div class="card-body text-center d-flex flex-column">
+                                    <i class="bi bi-people-fill display-3 text-info mb-3"></i>
+                                    <h5 class="card-title">人事事務ログイン</h5>
+                                    <p class="card-text flex-grow-1">
+                                        スタッフ管理、申請承認、人事評価、<br>
+                                        組織図管理などが行えます。
+                                    </p>
+                                    <a href="{{ url_for('admin_login') }}" class="btn btn-info btn-lg w-100">
+                                        <i class="bi bi-person-check-fill me-2"></i>Login
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 経理事務ログイン -->
+                        <div class="col-12 col-lg-6">
+                            <div class="card h-100 border-warning">
+                                <div class="card-body text-center d-flex flex-column">
+                                    <i class="bi bi-calculator display-3 text-warning mb-3"></i>
+                                    <h5 class="card-title">経理事務ログイン</h5>
+                                    <p class="card-text flex-grow-1">
+                                        給与計算、勤怠管理、経費管理、<br>
+                                        会計業務が行えます。
+                                    </p>
+                                    <a href="{{ url_for('accounting_login') }}" class="btn btn-warning btn-lg w-100">
+                                        <i class="bi bi-currency-yen me-2"></i>Login
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- スタッフログイン -->
+                        <div class="col-12 col-lg-6">
+                            <div class="card h-100 border-success">
+                                <div class="card-body text-center d-flex flex-column">
+                                    <i class="bi bi-person-workspace display-3 text-success mb-3"></i>
+                                    <h5 class="card-title">スタッフログイン</h5>
+                                    <p class="card-text flex-grow-1">
+                                        各種休暇申請、個人情報変更申請、<br>
+                                        勤怠入力などが行えます。
+                                    </p>
+                                    <a href="{{ url_for('employee_login') }}" class="btn btn-success btn-lg w-100">
+                                        <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 説明文 -->
+                    <div class="mt-4 p-3 bg-light rounded">
+                        <h6 class="mb-2"><i class="bi bi-info-circle me-2"></i>システムについて</h6>
+                        <small class="text-muted">
+                            このシステムでは、スタッフの情報管理、休暇の申請・承認、年次有給休暇管理、
+                            会社カレンダーの管理などを行うことができます。
+                            ご不明な点がございましたら、システム管理者にお問い合わせください。
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- フッター -->
+            <div class="text-center mt-4">
+                <small class="text-muted">
+                    &copy; 2025 StaffCloud. All rights reserved.
+                    <span class="mx-2">|</span>
+                    <a href="{{ url_for('system_admin_login') }}" class="text-muted text-decoration-none" style="font-size: 0.7rem;">
+                        <i class="bi bi-gear me-1"></i>System
+                    </a>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- カスタムスタイル -->
+<style>
+.min-vh-100 {
+    min-height: calc(100vh - 80px); /* ナビゲーションバーの高さを考慮 */
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    transition: transform 0.2s ease-in-out;
+}
+
+
+.display-4 {
+    font-weight: 300;
+}
+
+.card-body .display-3 {
+    margin-bottom: 1rem;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .display-4 {
+        font-size: 2.5rem;
+    }
+    
+    .card-body {
+        padding: 2rem !important;
+    }
+    
+    .min-vh-100 {
+        min-height: calc(100vh - 70px); /* モバイル時のナビゲーションバー高さを考慮 */
+        padding-top: 2rem !important;
+    }
+}
+
+@media (max-width: 992px) {
+    .col-lg-6 {
+        margin-bottom: 1rem;
+    }
+    
+    .col-lg-6:last-child {
+        margin-bottom: 0;
+    }
+}
+
+/* レイアウト調整 */
+.container-fluid.min-vh-100 {
+    padding-bottom: 2rem;
+}
+
+/* ナビゲーションバーとの間隔調整 */
+@media (min-width: 992px) {
+    .min-vh-100 {
+        padding-top: 3rem !important;
+    }
+}
+</style>
+{% endblock %}

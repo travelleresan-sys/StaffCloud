@@ -1,0 +1,542 @@
+{% extends "base.html" %}
+
+{% block title %}スタッフ情報 - {{ employee.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-person-circle me-2"></i>スタッフ情報</h1>
+            <div>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>一覧に戻る
+                </a>
+                <a href="{{ url_for('employee_pdf', employee_id=employee.id) }}" class="btn btn-outline-danger">
+                    <i class="bi bi-file-pdf me-1"></i>PDF発行
+                </a>
+                <a href="{{ url_for('employee_excel', employee_id=employee.id) }}" class="btn btn-outline-success">
+                    <i class="bi bi-file-excel me-1"></i>Excel発行
+                </a>
+                <a href="{{ url_for('edit_employee', employee_id=employee.id) }}" class="btn btn-primary">
+                    <i class="bi bi-pencil me-1"></i>編集
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- 基本情報 -->
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-person-badge me-2"></i>基本情報
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- 写真 -->
+                        {% if employee.photo_filename %}
+                        <div class="text-center mb-3">
+                            <img src="{{ url_for('static', filename='uploads/' + employee.photo_filename) }}" 
+                                 alt="{{ employee.name }}の写真" 
+                                 class="img-fluid rounded" 
+                                 style="width: 150px; height: 150px; object-fit: cover;">
+                        </div>
+                        {% else %}
+                        <div class="text-center mb-3">
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                                 style="width: 150px; height: 150px; margin: 0 auto;">
+                                <i class="bi bi-person text-muted" style="font-size: 4rem;"></i>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <table class="table table-borderless">
+                            <tr>
+                                <th class="text-muted" style="width: 40%;">氏名</th>
+                                <td><strong>{{ employee.name }}</strong></td>
+                            </tr>
+                            {% if employee.birth_date %}
+                            <tr>
+                                <th class="text-muted">生年月日</th>
+                                <td>{{ employee.birth_date.strftime('%Y年%m月%d日') }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if employee.gender %}
+                            <tr>
+                                <th class="text-muted">性別</th>
+                                <td>{{ employee.gender }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if employee.nationality %}
+                            <tr>
+                                <th class="text-muted">国籍</th>
+                                <td>{{ employee.nationality }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th class="text-muted">入社日</th>
+                                <td>{{ employee.join_date.strftime('%Y年%m月%d日') }}</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">在籍状況</th>
+                                <td>
+                                    {% if employee.status == '在籍中' %}
+                                        <span class="badge bg-success">{{ employee.status }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ employee.status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 連絡先・その他情報 -->
+            <div class="col-lg-8">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-telephone me-2"></i>連絡先・その他情報
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>連絡先</h6>
+                                <table class="table table-borderless table-sm">
+                                    {% if employee.phone_number %}
+                                    <tr>
+                                        <th class="text-muted" style="width: 30%;">電話番号</th>
+                                        <td>{{ employee.phone_number }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    {% if employee.address %}
+                                    <tr>
+                                        <th class="text-muted">住所</th>
+                                        <td>{{ employee.address }}</td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>重要な期限</h6>
+                                <table class="table table-borderless table-sm">
+                                    {% if employee.residence_card_expiry %}
+                                    <tr>
+                                        <th class="text-muted" style="width: 40%;">在留カード期限</th>
+                                        <td>
+                                            {{ employee.residence_card_expiry.strftime('%Y年%m月%d日') }}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                    {% if employee.car_insurance_expiry %}
+                                    <tr>
+                                        <th class="text-muted">自動車保険期限</th>
+                                        <td>
+                                            {{ employee.car_insurance_expiry.strftime('%Y年%m月%d日') }}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- 在留カード画像・PDF表示 -->
+                        {% if employee.residence_card_filename %}
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <h6>在留カード</h6>
+                                <div class="d-flex align-items-center gap-3">
+                                    {% if employee.residence_card_filename.endswith('.pdf') %}
+                                    <!-- PDF表示 -->
+                                    <div class="text-center">
+                                        <div class="d-inline-block p-4 bg-light rounded border position-relative mb-2" 
+                                             style="width: 120px; height: 80px; cursor: pointer;"
+                                             onclick="openResidenceCardModal('{{ employee.residence_card_filename }}', 'pdf')">
+                                            <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 2rem;"></i>
+                                            <div class="position-absolute top-0 start-0 bg-danger text-white px-2 py-1" 
+                                                 style="font-size: 0.7rem;">PDF</div>
+                                        </div>
+                                        <small class="text-muted d-block">クリックして表示</small>
+                                    </div>
+                                    {% else %}
+                                    <!-- 画像表示 -->
+                                    <div class="text-center">
+                                        <img src="{{ url_for('static', filename='uploads/' + employee.residence_card_filename) }}" 
+                                             alt="在留カード" 
+                                             class="img-thumbnail mb-2" 
+                                             style="width: 120px; height: 80px; object-fit: cover; cursor: pointer;"
+                                             onclick="openResidenceCardModal('{{ employee.residence_card_filename }}', 'image')">
+                                        <small class="text-muted d-block">クリックして表示</small>
+                                    </div>
+                                    {% endif %}
+                                    <div>
+                                        <p class="mb-1"><strong>ファイル名:</strong> {{ employee.residence_card_filename }}</p>
+                                        <a href="{{ url_for('static', filename='uploads/' + employee.residence_card_filename) }}" 
+                                           download class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-download me-1"></i>ダウンロード
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 自動車保険証情報 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-car-front me-2"></i>自動車保険証
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if employee.car_insurance_filename %}
+                        <div class="d-flex align-items-center gap-3">
+                            {% if employee.car_insurance_filename.endswith('.pdf') %}
+                            <!-- PDF表示 -->
+                            <div class="text-center">
+                                <div class="d-inline-block p-4 bg-light rounded border position-relative mb-2" 
+                                     style="width: 150px; height: 100px; cursor: pointer;"
+                                     onclick="openCarInsuranceModal('{{ employee.car_insurance_filename }}', 'pdf')">
+                                    <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 2.5rem;"></i>
+                                    <div class="position-absolute top-0 start-0 bg-danger text-white px-2 py-1" 
+                                         style="font-size: 0.7rem;">PDF</div>
+                                </div>
+                                <small class="text-muted d-block">クリックして表示</small>
+                            </div>
+                            {% else %}
+                            <!-- 画像表示 -->
+                            <div class="text-center">
+                                <img src="{{ url_for('static', filename='uploads/' + employee.car_insurance_filename) }}" 
+                                     alt="自動車保険証" 
+                                     class="img-thumbnail mb-2"
+                                     style="width: 150px; height: 100px; object-fit: cover; cursor: pointer;"
+                                     onclick="openCarInsuranceModal('{{ employee.car_insurance_filename }}', 'image')">
+                                <small class="text-muted d-block">クリックして表示</small>
+                            </div>
+                            {% endif %}
+                            <div>
+                                <p class="mb-1"><strong>ファイル名:</strong> {{ employee.car_insurance_filename }}</p>
+                                <a href="{{ url_for('static', filename='uploads/' + employee.car_insurance_filename) }}" 
+                                   download class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-download me-1"></i>ダウンロード
+                                </a>
+                            </div>
+                        </div>
+                        {% else %}
+                            <div class="text-center py-4 text-muted">
+                                <i class="bi bi-file-earmark display-4"></i>
+                                <p class="mb-0 mt-2">自動車保険証がアップロードされていません</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 人事情報 (管理者のみ) -->
+                {% if current_user and current_user.role == 'admin' %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-briefcase me-2"></i>人事情報
+                            <small class="text-muted">(管理者のみ表示)</small>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>職務情報</h6>
+                                <table class="table table-borderless table-sm">
+                                    {% if employee.position %}
+                                    <tr>
+                                        <th class="text-muted" style="width: 35%;">役職</th>
+                                        <td><span class="badge bg-primary">{{ employee.position }}</span></td>
+                                    </tr>
+                                    {% endif %}
+                                    {% if employee.department %}
+                                    <tr>
+                                        <th class="text-muted">部署</th>
+                                        <td><span class="badge bg-info">{{ employee.department }}</span></td>
+                                    </tr>
+                                    {% endif %}
+                                    {% if employee.hire_type %}
+                                    <tr>
+                                        <th class="text-muted">雇用形態</th>
+                                        <td>
+                                            {% if employee.hire_type == '正社員' %}
+                                                <span class="badge bg-success">{{ employee.hire_type }}</span>
+                                            {% elif employee.hire_type == '契約社員' %}
+                                                <span class="badge bg-warning">{{ employee.hire_type }}</span>
+                                            {% elif employee.hire_type == '派遣社員' %}
+                                                <span class="badge bg-secondary">{{ employee.hire_type }}</span>
+                                            {% else %}
+                                                <span class="badge bg-light text-dark">{{ employee.hire_type }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                    {% if employee.salary_grade %}
+                                    <tr>
+                                        <th class="text-muted">給与等級</th>
+                                        <td><span class="badge bg-dark">{{ employee.salary_grade }}</span></td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>経歴・スキル</h6>
+                                {% if employee.work_history %}
+                                <div class="mb-3">
+                                    <strong class="text-muted d-block mb-1">経歴</strong>
+                                    <div class="bg-light p-2 rounded small">{{ employee.work_history }}</div>
+                                </div>
+                                {% endif %}
+                                {% if employee.skills %}
+                                <div class="mb-3">
+                                    <strong class="text-muted d-block mb-1">スキル</strong>
+                                    <div class="bg-light p-2 rounded small">{{ employee.skills }}</div>
+                                </div>
+                                {% endif %}
+                                {% if employee.qualifications %}
+                                <div class="mb-3">
+                                    <strong class="text-muted d-block mb-1">資格</strong>
+                                    <div class="bg-light p-2 rounded small">{{ employee.qualifications }}</div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        {% if not (employee.position or employee.department or employee.hire_type or employee.salary_grade or employee.work_history or employee.skills or employee.qualifications) %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-briefcase display-4"></i>
+                            <p class="mb-0 mt-2">人事情報が登録されていません</p>
+                            <small>編集画面から情報を追加してください</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- 年次有給休暇情報 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-calendar-check me-2"></i>年次有給休暇情報
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-3 text-center">
+                                <div class="bg-primary bg-opacity-10 p-3 rounded">
+                                    <h4 class="text-primary mb-1">{{ total_credited }}</h4>
+                                    <small class="text-muted">付与日数合計</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="bg-success bg-opacity-10 p-3 rounded">
+                                    <h4 class="text-success mb-1">{{ total_taken }}</h4>
+                                    <small class="text-muted">取得日数合計</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="bg-warning bg-opacity-10 p-3 rounded">
+                                    <h4 class="text-warning mb-1">{{ remaining_leave }}</h4>
+                                    <small class="text-muted">残日数</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="bg-info bg-opacity-10 p-3 rounded">
+                                    <h4 class="text-info mb-1">{{ legal_leave_days }}</h4>
+                                    <small class="text-muted">法定付与日数</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 年休履歴 -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>付与履歴</h6>
+                                {% if leave_credits %}
+                                <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>付与日</th>
+                                                <th>日数</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        {% for credit in leave_credits %}
+                                            <tr>
+                                                <td>{{ credit.date_credited.strftime('%Y/%m/%d') }}</td>
+                                                <td>{{ credit.days_credited }}日</td>
+                                            </tr>
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <p class="text-muted">付与履歴がありません。</p>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h6>取得履歴</h6>
+                                {% if leave_records %}
+                                <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>取得日</th>
+                                                <th>日数</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        {% for record in leave_records %}
+                                            <tr>
+                                                <td>{{ record.date_taken.strftime('%Y/%m/%d') }}</td>
+                                                <td>{{ record.days_taken }}日</td>
+                                            </tr>
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <p class="text-muted">取得履歴がありません。</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 在留カード画像・PDF表示モーダル -->
+<div class="modal fade" id="residenceCardModal" tabindex="-1" aria-labelledby="residenceCardModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="residenceCardModalLabel">在留カード</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="modalImageContainer" style="display: none;">
+                    <img id="modalImage" src="" alt="在留カード" class="img-fluid">
+                </div>
+                <div id="modalPdfContainer" style="display: none;">
+                    <div class="alert alert-info">
+                        <i class="bi bi-file-earmark-pdf me-2"></i>
+                        <strong>PDFファイル</strong><br>
+                        <span id="modalPdfName"></span>
+                    </div>
+                    <div class="d-flex justify-content-center gap-2">
+                        <a id="modalPdfDownload" href="" download class="btn btn-primary">
+                            <i class="bi bi-download me-1"></i>ダウンロード
+                        </a>
+                        <a id="modalPdfView" href="" target="_blank" class="btn btn-outline-primary">
+                            <i class="bi bi-eye me-1"></i>新しいタブで表示
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 自動車保険証モーダル -->
+<div class="modal fade" id="carInsuranceModal" tabindex="-1" aria-labelledby="carInsuranceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="carInsuranceModalLabel">自動車保険証</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <!-- 画像表示エリア -->
+                <div id="carInsuranceImageContainer">
+                    <img id="carInsuranceModalImage" src="" alt="自動車保険証" class="img-fluid">
+                </div>
+                <!-- PDF表示エリア -->
+                <div id="carInsurancePdfContainer" style="display: none;">
+                    <div class="alert alert-info">
+                        <i class="bi bi-file-earmark-pdf me-2"></i>
+                        <span id="carInsurancePdfName">PDF</span>
+                    </div>
+                    <p class="text-muted">PDFファイルを表示するには、ダウンロードまたは新しいタブで表示をクリックしてください。</p>
+                    <div class="mt-3">
+                        <a id="carInsurancePdfDownload" href="" download class="btn btn-primary">
+                            <i class="bi bi-download me-1"></i>ダウンロード
+                        </a>
+                        <a id="carInsurancePdfView" href="" target="_blank" class="btn btn-outline-primary">
+                            <i class="bi bi-eye me-1"></i>新しいタブで表示
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openResidenceCardModal(filename, type) {
+    const modal = new bootstrap.Modal(document.getElementById('residenceCardModal'));
+    const imageContainer = document.getElementById('modalImageContainer');
+    const pdfContainer = document.getElementById('modalPdfContainer');
+    const modalImage = document.getElementById('modalImage');
+    const modalPdfName = document.getElementById('modalPdfName');
+    const modalPdfDownload = document.getElementById('modalPdfDownload');
+    const modalPdfView = document.getElementById('modalPdfView');
+    
+    const fileUrl = "{{ url_for('static', filename='uploads/') }}" + filename;
+    
+    if (type === 'image') {
+        // 画像表示
+        modalImage.src = fileUrl;
+        imageContainer.style.display = 'block';
+        pdfContainer.style.display = 'none';
+    } else if (type === 'pdf') {
+        // PDF表示
+        modalPdfName.textContent = filename;
+        modalPdfDownload.href = fileUrl;
+        modalPdfView.href = fileUrl;
+        imageContainer.style.display = 'none';
+        pdfContainer.style.display = 'block';
+    }
+    
+    modal.show();
+}
+
+function openCarInsuranceModal(filename, type) {
+    const modal = new bootstrap.Modal(document.getElementById('carInsuranceModal'));
+    const imageContainer = document.getElementById('carInsuranceImageContainer');
+    const pdfContainer = document.getElementById('carInsurancePdfContainer');
+    const modalImage = document.getElementById('carInsuranceModalImage');
+    const modalPdfName = document.getElementById('carInsurancePdfName');
+    const modalPdfDownload = document.getElementById('carInsurancePdfDownload');
+    const modalPdfView = document.getElementById('carInsurancePdfView');
+    
+    const fileUrl = "{{ url_for('static', filename='uploads/') }}" + filename;
+    
+    if (type === 'image') {
+        // 画像表示
+        modalImage.src = fileUrl;
+        imageContainer.style.display = 'block';
+        pdfContainer.style.display = 'none';
+    } else if (type === 'pdf') {
+        // PDF表示
+        modalPdfName.textContent = filename;
+        modalPdfDownload.href = fileUrl;
+        modalPdfView.href = fileUrl;
+        imageContainer.style.display = 'none';
+        pdfContainer.style.display = 'block';
+    }
+    
+    modal.show();
+}
+</script>
+
+{% endblock %}

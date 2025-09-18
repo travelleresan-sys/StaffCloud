@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>労働時間計算テスト</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-4">
+    <h2>7.5時間/日 労働時間計算テスト</h2>
+    
+    <div class="table-responsive">
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th width="4%">日</th>
+                    <th width="4%">曜日</th>
+                    <th width="12%">始業時刻</th>
+                    <th width="12%">終業時刻</th>
+                    <th width="6%">休憩(分)</th>
+                    <th width="8%">法定内<br><small class="text-muted">労働時間</small></th>
+                    <th width="8%">法定外<br><small class="text-warning">残業(25%)</small></th>
+                    <th width="8%">法定休日<br><small class="text-danger">労働(35%)</small></th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 月曜日 -->
+                <tr data-weekday="0">
+                    <td>2</td>
+                    <td>月</td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control" name="start_hour_2" value="9" min="0" max="23">
+                            <span class="input-group-text">:</span>
+                            <input type="number" class="form-control" name="start_minute_2" value="0" min="0" max="59">
+                        </div>
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control" name="end_hour_2" value="18" min="0" max="23">
+                            <span class="input-group-text">:</span>
+                            <input type="number" class="form-control" name="end_minute_2" value="0" min="0" max="59">
+                        </div>
+                    </td>
+                    <td><input type="number" class="form-control form-control-sm" name="break_time_2" value="90" min="0" max="480" step="15"></td>
+                    <td class="text-center text-muted" id="regular_2"><small>-</small></td>
+                    <td class="text-center text-warning" id="overtime_2"><small>-</small></td>
+                    <td class="text-center text-danger" id="holiday_2"><small>-</small></td>
+                </tr>
+                <!-- 火曜日 -->
+                <tr data-weekday="1">
+                    <td>3</td>
+                    <td>火</td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control" name="start_hour_3" value="9" min="0" max="23">
+                            <span class="input-group-text">:</span>
+                            <input type="number" class="form-control" name="start_minute_3" value="0" min="0" max="59">
+                        </div>
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control" name="end_hour_3" value="18" min="0" max="23">
+                            <span class="input-group-text">:</span>
+                            <input type="number" class="form-control" name="end_minute_3" value="0" min="0" max="59">
+                        </div>
+                    </td>
+                    <td><input type="number" class="form-control form-control-sm" name="break_time_3" value="90" min="0" max="480" step="15"></td>
+                    <td class="text-center text-muted" id="regular_3"><small>-</small></td>
+                    <td class="text-center text-warning" id="overtime_3"><small>-</small></td>
+                    <td class="text-center text-danger" id="holiday_3"><small>-</small></td>
+                </tr>
+                <!-- 水曜日 -->
+                <tr data-weekday="2">
+                    <td>4</td>
+                    <td>水</td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control" name="start_hour_4" value="9" min="0" max="23">
+                            <span class="input-group-text">:</span>
+                            <input type="number" class="form-control" name="start_minute_4" value="0" min="0" max="59">
+                        </div>
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control" name="end_hour_4" value="18" min="0" max="23">
+                            <span class="input-group-text">:</span>
+                            <input type="number" class="form-control" name="end_minute_4" value="0" min="0" max="59">
+                        </div>
+                    </td>
+                    <td><input type="number" class="form-control form-control-sm" name="break_time_4" value="90" min="0" max="480" step="15"></td>
+                    <td class="text-center text-muted" id="regular_4"><small>-</small></td>
+                    <td class="text-center text-warning" id="overtime_4"><small>-</small></td>
+                    <td class="text-center text-danger" id="holiday_4"><small>-</small></td>
+                </tr>
+                <!-- 木曜日 -->
+                <tr data-weekday="3">
+                    <td>5</td>
+                    <td>木</td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control" name="start_hour_5" value="9" min="0" max="23">
+                            <span class="input-group-text">:</span>
+                            <input type="number" class="form-control" name="start_minute_5" value="0" min="0" max="59">
+                        </div>
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control" name="end_hour_5" value="18" min="0" max="23">
+                            <span class="input-group-text">:</span>
+                            <input type="number" class="form-control" name="end_minute_5" value="0" min="0" max="59">
+                        </div>
+                    </td>
+                    <td><input type="number" class="form-control form-control-sm" name="break_time_5" value="90" min="0" max="480" step="15"></td>
+                    <td class="text-center text-muted" id="regular_5"><small>-</small></td>
+                    <td class="text-center text-warning" id="overtime_5"><small>-</small></td>
+                    <td class="text-center text-danger" id="holiday_5"><small>-</small></td>
+                </tr>
+                <!-- 金曜日 -->
+                <tr data-weekday="4">
+                    <td>6</td>
+                    <td>金</td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control" name="start_hour_6" value="9" min="0" max="23">
+                            <span class="input-group-text">:</span>
+                            <input type="number" class="form-control" name="start_minute_6" value="0" min="0" max="59">
+                        </div>
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control" name="end_hour_6" value="18" min="0" max="23">
+                            <span class="input-group-text">:</span>
+                            <input type="number" class="form-control" name="end_minute_6" value="0" min="0" max="59">
+                        </div>
+                    </td>
+                    <td><input type="number" class="form-control form-control-sm" name="break_time_6" value="90" min="0" max="480" step="15"></td>
+                    <td class="text-center text-muted" id="regular_6"><small>-</small></td>
+                    <td class="text-center text-warning" id="overtime_6"><small>-</small></td>
+                    <td class="text-center text-danger" id="holiday_6"><small>-</small></td>
+                </tr>
+                <!-- 土曜日 -->
+                <tr data-weekday="5">
+                    <td>7</td>
+                    <td class="text-primary">土</td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control" name="start_hour_7" value="9" min="0" max="23">
+                            <span class="input-group-text">:</span>
+                            <input type="number" class="form-control" name="start_minute_7" value="0" min="0" max="59">
+                        </div>
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control" name="end_hour_7" value="18" min="0" max="23">
+                            <span class="input-group-text">:</span>
+                            <input type="number" class="form-control" name="end_minute_7" value="0" min="0" max="59">
+                        </div>
+                    </td>
+                    <td><input type="number" class="form-control form-control-sm" name="break_time_7" value="90" min="0" max="480" step="15"></td>
+                    <td class="text-center text-muted" id="regular_7"><small>-</small></td>
+                    <td class="text-center text-warning" id="overtime_7"><small>-</small></td>
+                    <td class="text-center text-danger" id="holiday_7"><small>-</small></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="alert alert-info">
+        <h5>期待される結果（月〜土曜日 各7.5時間勤務）:</h5>
+        <ul>
+            <li><strong>月〜金曜日</strong>: 法定内 7:30、法定外 0:00</li>
+            <li><strong>土曜日</strong>: 法定内 2:30、法定外 5:00 （週40時間制限による調整）</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+// 労働時間計算JavaScriptをコピー
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.querySelector('tbody');
+    if (table) {
+        table.addEventListener('change', function(e) {
+            if (e.target.type === 'number') {
+                const row = e.target.closest('tr');
+                updateRowCalculation(row);
+            }
+        });
+        
+        // 初期表示時にも計算実行
+        document.querySelectorAll('tbody tr').forEach(row => {
+            updateRowCalculation(row);
+        });
+        
+        // 初期表示時の週40時間制限表示更新
+        setTimeout(() => {
+            updateWeeklyCalculationDisplay();
+        }, 200);
+    }
+});
+
+function updateRowCalculation(row) {
+    // 入力値を取得
+    const startHour = parseInt(row.querySelector('[name^="start_hour_"]').value) || null;
+    const startMinute = parseInt(row.querySelector('[name^="start_minute_"]').value) || 0;
+    const endHour = parseInt(row.querySelector('[name^="end_hour_"]').value) || null;
+    const endMinute = parseInt(row.querySelector('[name^="end_minute_"]').value) || 0;
+    const breakTime = parseInt(row.querySelector('[name^="break_time_"]').value) || 0;
+    
+    // 表示用要素を取得
+    const dayNumber = parseInt(row.querySelector('td:first-child').textContent);
+    const regularCell = document.getElementById(`regular_${dayNumber}`);
+    const overtimeCell = document.getElementById(`overtime_${dayNumber}`);
+    const holidayCell = document.getElementById(`holiday_${dayNumber}`);
+    
+    // 開始・終了時刻がない場合
+    if (startHour === null || endHour === null) {
+        regularCell.innerHTML = '<small class="text-muted">-</small>';
+        overtimeCell.innerHTML = '<small class="text-muted">-</small>';
+        holidayCell.innerHTML = '<small class="text-muted">-</small>';
+        return;
+    }
+    
+    // 時刻の妥当性チェック
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || 
+        startMinute < 0 || startMinute > 59 || endMinute < 0 || endMinute > 59) {
+        regularCell.innerHTML = '<small class="text-danger">エラー</small>';
+        overtimeCell.innerHTML = '<small class="text-danger">エラー</small>';
+        holidayCell.innerHTML = '<small class="text-danger">エラー</small>';
+        return;
+    }
+    
+    // 労働時間計算
+    let startTotalMinutes = startHour * 60 + startMinute;
+    let endTotalMinutes = endHour * 60 + endMinute;
+    
+    // 日をまたぐ場合の処理
+    if (endTotalMinutes <= startTotalMinutes) {
+        endTotalMinutes += 24 * 60; // 翌日
+    }
+    
+    const totalWorkMinutes = endTotalMinutes - startTotalMinutes - breakTime;
+    
+    if (totalWorkMinutes <= 0) {
+        regularCell.innerHTML = '<small class="text-muted">0:00</small>';
+        overtimeCell.innerHTML = '<small class="text-muted">0:00</small>';
+        holidayCell.innerHTML = '<small class="text-muted">0:00</small>';
+        return;
+    }
+    
+    // 曜日判定（0=月曜日, 6=日曜日）
+    const weekday = parseInt(row.getAttribute('data-weekday'));
+    
+    const isSunday = (weekday === 6);
+    const isHoliday = row.classList.contains('table-secondary'); // 祝日判定
+    
+    // 法定休日の判定
+    const isLegalHoliday = isSunday || isHoliday; // 日曜・祝日は法定休日扱い
+    
+    let regularMinutes = 0;
+    let overtimeMinutes = 0;
+    let holidayMinutes = 0;
+    
+    if (isLegalHoliday) {
+        // 法定休日労働（35%割増）- 全て法定休日労働時間として扱う
+        holidayMinutes = totalWorkMinutes;
+    } else {
+        // 平日・法定外休日の計算（週40時間制限優先）
+        // 初期表示では全て法定内労働時間として表示し、
+        // 後でupdateWeeklyCalculationDisplay()で週40時間制限による調整を実行
+        regularMinutes = totalWorkMinutes;
+        overtimeMinutes = 0;
+        
+        // 注意：週40時間制限による最終調整はupdateWeeklyCalculationDisplay()で実行
+    }
+    
+    // 時間:分形式で表示
+    function formatTime(minutes) {
+        if (minutes === 0) return '<small class="text-muted">0:00</small>';
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        return `<strong>${hours}:${mins.toString().padStart(2, '0')}</strong>`;
+    }
+    
+    regularCell.innerHTML = formatTime(regularMinutes);
+    overtimeCell.innerHTML = formatTime(overtimeMinutes);
+    holidayCell.innerHTML = formatTime(holidayMinutes);
+    
+    // 週40時間制限による調整表示を更新
+    updateWeeklyCalculationDisplay();
+}
+
+// 週40時間制限を考慮した表示更新
+function updateWeeklyCalculationDisplay() {
+    const allRows = document.querySelectorAll('tbody tr');
+    const weeklyData = [];
+    
+    // 各日のデータを収集
+    allRows.forEach(row => {
+        const dayNumber = parseInt(row.querySelector('td:first-child').textContent);
+        const weekday = parseInt(row.getAttribute('data-weekday'));
+        const regularCell = document.getElementById(`regular_${dayNumber}`);
+        const overtimeCell = document.getElementById(`overtime_${dayNumber}`);
+        const holidayCell = document.getElementById(`holiday_${dayNumber}`);
+        
+        // 現在の時間を分で取得
+        const getMinutesFromCell = (cell) => {
+            const text = cell.textContent.trim();
+            if (text === '-' || text === '0:00') return 0;
+            const match = text.match(/(\d+):(\d+)/);
+            if (match) {
+                return parseInt(match[1]) * 60 + parseInt(match[2]);
+            }
+            return 0;
+        };
+        
+        const regular = getMinutesFromCell(regularCell);
+        const overtime = getMinutesFromCell(overtimeCell);
+        const holiday = getMinutesFromCell(holidayCell);
+        
+        weeklyData.push({
+            day: dayNumber,
+            weekday: weekday,
+            regular: regular,
+            overtime: overtime,
+            holiday: holiday,
+            regularCell: regularCell,
+            overtimeCell: overtimeCell,
+            holidayCell: holidayCell
+        });
+    });
+    
+    // 平日・土曜日（法定外休日）を対象に週40時間制限を適用（日曜・祝日除く）
+    const workdays = weeklyData.filter(d => {
+        // 日曜日（weekday=6）と法定休日を除く
+        const isSunday = (d.weekday === 6);
+        const isLegalHoliday = d.holiday > 0; // 法定休日労働時間がある場合は法定休日
+        return !isSunday && !isLegalHoliday && (d.regular > 0 || d.overtime > 0);
+    });
+    
+    if (workdays.length === 0) return;
+    
+    // 週合計労働時間を計算
+    let totalWeeklyMinutes = 0;
+    const totalMinutesPerDay = [];
+    
+    workdays.forEach(d => {
+        const totalDay = d.regular + d.overtime;
+        totalWeeklyMinutes += totalDay;
+        totalMinutesPerDay.push(totalDay);
+    });
+    
+    const weeklyLimitMinutes = 40 * 60; // 2400分
+    
+    // 週40時間制限を適用して再配分
+    if (totalWeeklyMinutes > 0) {
+        // まず全ての労働時間をリセット
+        let remainingRegularMinutes = Math.min(totalWeeklyMinutes, weeklyLimitMinutes);
+        let remainingOvertimeMinutes = Math.max(0, totalWeeklyMinutes - weeklyLimitMinutes);
+        
+        // 日付順に法定内労働時間を割り当て
+        workdays.forEach((dayData, index) => {
+            const totalDayMinutes = totalMinutesPerDay[index];
+            
+            if (totalDayMinutes > 0) {
+                // この日に割り当てる法定内労働時間
+                const assignedRegular = Math.min(remainingRegularMinutes, totalDayMinutes);
+                // 残りは法定外労働時間
+                const assignedOvertime = totalDayMinutes - assignedRegular;
+                
+                // 表示を更新
+                dayData.regularCell.innerHTML = formatTimeForDisplay(assignedRegular);
+                dayData.overtimeCell.innerHTML = formatTimeForDisplay(assignedOvertime);
+                
+                remainingRegularMinutes -= assignedRegular;
+            }
+        });
+    }
+}
+
+// 表示用時間フォーマット関数
+function formatTimeForDisplay(minutes) {
+    if (minutes === 0) return '<small class="text-muted">0:00</small>';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `<strong>${hours}:${mins.toString().padStart(2, '0')}</strong>`;
+}
+</script>
+</body>
+</html>

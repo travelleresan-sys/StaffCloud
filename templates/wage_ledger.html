@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}賃金台帳管理 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-file-alt"></i> 賃金台帳管理
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- 賃金台帳PDF生成フォーム -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-secondary mb-3">賃金台帳PDF生成</h5>
+                            <form action="{{ url_for('create_wage_ledger_pdf') }}" method="POST" class="needs-validation" novalidate>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label for="employee_id" class="form-label">従業員選択 <span class="text-danger">*</span></label>
+                                            <select class="form-control" id="employee_id" name="employee_id" required>
+                                                <option value="">従業員を選択してください</option>
+                                                {% for employee in employees %}
+                                                <option value="{{ employee.id }}">
+                                                    {{ employee.employee_number or ('EMP' + '%03d'|format(employee.id)) }} - {{ employee.name }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                            <div class="invalid-feedback">
+                                                従業員を選択してください。
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="year" class="form-label">対象年度 <span class="text-danger">*</span></label>
+                                            <select class="form-control" id="year" name="year" required>
+                                                <option value="">年度を選択</option>
+                                                {% for year in years %}
+                                                <option value="{{ year }}" {% if year == years[2] %}selected{% endif %}>
+                                                    {{ year }}年度
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                            <div class="invalid-feedback">
+                                                年度を選択してください。
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label class="form-label">&nbsp;</label>
+                                            <div>
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fas fa-file-pdf"></i> 賃金台帳PDF生成
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 賃金台帳について -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="alert alert-info" role="alert">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-info-circle"></i> 賃金台帳について
+                                </h6>
+                                <hr>
+                                <ul class="mb-0">
+                                    <li><strong>賃金台帳</strong>は、労働基準法第108条により事業主に作成・保存が義務付けられている帳簿です</li>
+                                    <li>従業員ごとに<strong>12ヶ月分の給与データ</strong>を横並びで表示し、<strong>年間合計</strong>も確認できます</li>
+                                    <li>基本給、各種手当、控除額、実労働時間など、給与明細の詳細データを月別に一覧表示します</li>
+                                    <li>PDF生成前に、対象従業員の給与計算が完了していることを確認してください</li>
+                                    <li>生成された賃金台帳は、<strong>3年間保存</strong>する必要があります</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 機能説明 -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card border-success">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-check-circle"></i> 表示項目
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-unstyled mb-0">
+                                        <li><i class="fas fa-dot-circle text-success"></i> 基本給・各種手当（時間外、深夜、休日、通勤、住宅）</li>
+                                        <li><i class="fas fa-dot-circle text-success"></i> 社会保険料（健康保険、厚生年金、雇用保険）</li>
+                                        <li><i class="fas fa-dot-circle text-success"></i> 税額（所得税、住民税）</li>
+                                        <li><i class="fas fa-dot-circle text-success"></i> 支給額・控除額・差引支給額</li>
+                                        <li><i class="fas fa-dot-circle text-success"></i> 労働時間（労働日数、労働時間数、各種時間外）</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-exclamation-triangle"></i> 注意事項
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-unstyled mb-0">
+                                        <li><i class="fas fa-exclamation-circle text-warning"></i> 給与計算が完了している月のデータのみ表示されます</li>
+                                        <li><i class="fas fa-exclamation-circle text-warning"></i> 未計算の月は空白または「-」で表示されます</li>
+                                        <li><i class="fas fa-exclamation-circle text-warning"></i> 年間合計は計算済みの月のデータのみで算出されます</li>
+                                        <li><i class="fas fa-exclamation-circle text-warning"></i> PDFは横向き（ランドスケープ）で生成されます</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Bootstrap form validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+
+// Form submission confirmation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const employeeSelect = document.getElementById('employee_id');
+    const yearSelect = document.getElementById('year');
+    
+    if (employeeSelect.value && yearSelect.value) {
+        const employeeName = employeeSelect.options[employeeSelect.selectedIndex].text.split(' - ')[1];
+        const year = yearSelect.options[yearSelect.selectedIndex].text;
+        
+        if (!confirm(`${employeeName}の${year}賃金台帳PDFを生成しますか？`)) {
+            e.preventDefault();
+        }
+    }
+});
+</script>
+{% endblock %}

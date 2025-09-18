@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}年次有給休暇管理 - 従業員管理システム{% endblock %}
+{% block title %}年次有給休暇管理 - StaffCloud{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -33,7 +33,13 @@
                             <tr>
                                 <td><span class="badge bg-secondary">{{ employee.id }}</span></td>
                                 <td>{{ employee.name }}</td>
-                                <td>{{ employee.join_date.strftime('%Y年%m月%d日') }}</td>
+                                <td>
+                                    {% if employee.join_date %}
+                                        {{ employee.join_date.strftime('%Y年%m月%d日') }}
+                                    {% else %}
+                                        <span class="text-muted">未設定</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     {% if employee.status == '在籍中' %}
                                         <span class="badge bg-success">在籍中</span>
@@ -146,9 +152,11 @@
                     </div>
                     <div class="col-md-4">
                         <div class="d-grid">
-                            <a href="{{ url_for('add_leave_credit') }}" class="btn btn-success btn-lg">
-                                <i class="bi bi-robot me-2"></i>自動付与を実行
-                            </a>
+                            <form method="POST" action="{{ url_for('auto_grant_annual_leave') }}" style="display: inline;">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="bi bi-robot me-2"></i>自動付与を実行
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>

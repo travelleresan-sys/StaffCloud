@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}総勘定元帳 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-journal-text me-2"></i>総勘定元帳
+                </h1>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('accounting_dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>戻る
+                    </a>
+                    {% if ledger_data %}
+                    <a href="{{ url_for('export_ledger_excel', account_id=selected_account_id, year=selected_year, month=selected_month or '') }}" class="btn btn-success">
+                        <i class="bi bi-file-excel me-1"></i>Excelエクスポート
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- フィルター -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="account_id" class="form-label">勘定科目</label>
+                            <select class="form-select" id="account_id" name="account_id">
+                                <option value="">科目を選択</option>
+                                {% for account in accounts %}
+                                <option value="{{ account.id }}" {{ 'selected' if account.id == selected_account_id else '' }}>
+                                    {{ account.account_code }} - {{ account.account_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="year" class="form-label">年</label>
+                            <select class="form-select" id="year" name="year">
+                                {% for year in years %}
+                                <option value="{{ year }}" {{ 'selected' if year == selected_year else '' }}>{{ year }}年</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="month" class="form-label">月（任意）</label>
+                            <select class="form-select" id="month" name="month">
+                                <option value="">全月</option>
+                                {% for month in range(1, 13) %}
+                                <option value="{{ month }}" {{ 'selected' if month == selected_month else '' }}>{{ month }}月</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-search me-1"></i>表示
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 元帳データ -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-table me-2"></i>元帳明細
+                        {% if selected_account_id %}
+                        - {{ accounts|selectattr('id', 'equalto', selected_account_id)|first|attr('account_name') }}
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if ledger_data %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>伝票番号</th>
+                                    <th>日付</th>
+                                    <th>相手科目</th>
+                                    <th>摘要</th>
+                                    <th class="text-end">借方</th>
+                                    <th class="text-end">貸方</th>
+                                    <th class="text-end">差引金額</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if opening_balance != 0 %}
+                                <tr class="table-info">
+                                    <td><strong>期首残高</strong></td>
+                                    <td>{{ selected_year }}/04/01</td>
+                                    <td>-</td>
+                                    <td>期首残高</td>
+                                    <td class="text-end">
+                                        {% if opening_balance > 0 %}
+                                        <strong>{{ "{:,}".format(opening_balance) }}</strong>
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if opening_balance < 0 %}
+                                        <strong>{{ "{:,}".format(-opening_balance) }}</strong>
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <strong class="{{ 'text-danger' if opening_balance < 0 else 'text-success' if opening_balance > 0 else 'text-muted' }}">
+                                            {{ "{:,}".format(opening_balance) }}
+                                        </strong>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% for detail in ledger_data %}
+                                <tr>
+                                    <td>{{ detail.journal_entry.reference_number or '-' }}</td>
+                                    <td>{{ detail.journal_entry.entry_date.strftime('%Y/%m/%d') }}</td>
+                                    <td>{{ detail.opposite_account_name or '-' }}</td>
+                                    <td>{{ detail.journal_entry.description }}</td>
+                                    <td class="text-end">
+                                        {% if detail.debit_amount > 0 %}
+                                        {{ "{:,}".format(detail.debit_amount) }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if detail.credit_amount > 0 %}
+                                        {{ "{:,}".format(detail.credit_amount) }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="{{ 'text-danger' if detail.running_balance < 0 else 'text-success' if detail.running_balance > 0 else 'text-muted' }}">
+                                            {{ "{:,}".format(detail.running_balance) }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-journal-text display-1"></i>
+                        <p class="mt-3">
+                            {% if selected_account_id %}
+                            選択した科目・期間の取引データがありません。
+                            {% else %}
+                            勘定科目を選択してください。
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

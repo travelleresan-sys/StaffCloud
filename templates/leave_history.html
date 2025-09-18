@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}有給休暇履歴{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-clock-history me-2"></i>有給休暇履歴</h1>
+            <div>
+                <a href="{{ url_for('request_leave') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-1"></i>新規申請
+                </a>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>ダッシュボード
+                </a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-list-ul me-2"></i>申請履歴一覧
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if leave_requests %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>申請日</th>
+                                <th>休暇期間</th>
+                                <th>日数</th>
+                                <th>理由</th>
+                                <th>状態</th>
+                                <th>管理者コメント</th>
+                                <th>承認日</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for request in leave_requests %}
+                            <tr>
+                                <td>{{ request.created_at.strftime('%Y/%m/%d %H:%M') }}</td>
+                                <td>{{ request.start_date.strftime('%Y/%m/%d') }}〜{{ request.end_date.strftime('%Y/%m/%d') }}</td>
+                                <td class="text-center">{{ request.days_requested }}日</td>
+                                <td>{{ request.reason or '－' }}</td>
+                                <td>
+                                    {% if request.status == 'pending' %}
+                                        <span class="badge bg-warning"><i class="bi bi-clock me-1"></i>審査中</span>
+                                    {% elif request.status == 'approved' %}
+                                        <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>承認</span>
+                                    {% else %}
+                                        <span class="badge bg-danger"><i class="bi bi-x-lg me-1"></i>却下</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ request.admin_comment or '－' }}</td>
+                                <td>{{ request.reviewed_at.strftime('%Y/%m/%d %H:%M') if request.reviewed_at else '－' }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x text-muted" style="font-size: 4rem;"></i>
+                    <p class="text-muted mt-3">有給休暇申請履歴がありません。</p>
+                    <a href="{{ url_for('request_leave') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-1"></i>初めての有給申請をする
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

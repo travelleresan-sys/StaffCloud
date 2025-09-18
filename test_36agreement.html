@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>36協定機能テスト</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { border: 1px solid #ddd; margin: 10px 0; padding: 15px; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        iframe { width: 100%; height: 600px; border: 1px solid #ccc; }
+        button { padding: 10px 15px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>36協定管理機能テスト</h1>
+    
+    <div class="test-section">
+        <h2>1. ログイン</h2>
+        <p>テストユーザー: admin@test.com / パスワード: admin123</p>
+        <button onclick="testLogin()">ログインテスト</button>
+        <div id="login-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 36協定作成画面</h2>
+        <button onclick="testCreateForm()">作成画面を表示</button>
+        <div id="create-form-result"></div>
+        <iframe id="create-form-iframe" style="display:none;"></iframe>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 36協定一覧画面</h2>
+        <button onclick="testListPage()">一覧画面を表示</button>
+        <div id="list-result"></div>
+        <iframe id="list-iframe" style="display:none;"></iframe>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. 既存36協定管理画面</h2>
+        <button onclick="testExistingPage()">既存管理画面を表示</button>
+        <div id="existing-result"></div>
+        <iframe id="existing-iframe" style="display:none;"></iframe>
+    </div>
+
+    <script>
+        const baseUrl = 'http://127.0.0.1:5001';
+        
+        async function testLogin() {
+            const resultDiv = document.getElementById('login-result');
+            resultDiv.innerHTML = 'ログイン中...';
+            
+            try {
+                // ログインフォームデータを準備
+                const formData = new FormData();
+                formData.append('email', 'admin@test.com');
+                formData.append('password', 'admin123');
+                
+                const response = await fetch(`${baseUrl}/login`, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'  // Cookieを含める
+                });
+                
+                if (response.ok || response.status === 302) {
+                    resultDiv.innerHTML = '<span class="success">✅ ログイン成功</span>';
+                    return true;
+                } else {
+                    resultDiv.innerHTML = '<span class="error">❌ ログイン失敗: ' + response.status + '</span>';
+                    return false;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<span class="error">❌ ログインエラー: ' + error.message + '</span>';
+                return false;
+            }
+        }
+        
+        async function testCreateForm() {
+            const resultDiv = document.getElementById('create-form-result');
+            const iframe = document.getElementById('create-form-iframe');
+            
+            resultDiv.innerHTML = '36協定作成画面をテスト中...';
+            
+            // まずログインを実行
+            const loginSuccess = await testLogin();
+            if (!loginSuccess) {
+                resultDiv.innerHTML = '<span class="error">❌ ログインが必要です</span>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${baseUrl}/create_36agreement`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = '<span class="success">✅ 36協定作成画面の表示成功</span>';
+                    iframe.src = `${baseUrl}/create_36agreement`;
+                    iframe.style.display = 'block';
+                } else if (response.status === 302) {
+                    resultDiv.innerHTML = '<span class="warning">⚠️ リダイレクトされました (認証が必要かもしれません)</span>';
+                } else {
+                    resultDiv.innerHTML = '<span class="error">❌ 作成画面表示失敗: ' + response.status + '</span>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<span class="error">❌ エラー: ' + error.message + '</span>';
+            }
+        }
+        
+        async function testListPage() {
+            const resultDiv = document.getElementById('list-result');
+            const iframe = document.getElementById('list-iframe');
+            
+            resultDiv.innerHTML = '36協定一覧画面をテスト中...';
+            
+            try {
+                const response = await fetch(`${baseUrl}/list_36agreements`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = '<span class="success">✅ 36協定一覧画面の表示成功</span>';
+                    iframe.src = `${baseUrl}/list_36agreements`;
+                    iframe.style.display = 'block';
+                } else {
+                    resultDiv.innerHTML = '<span class="error">❌ 一覧画面表示失敗: ' + response.status + '</span>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<span class="error">❌ エラー: ' + error.message + '</span>';
+            }
+        }
+        
+        async function testExistingPage() {
+            const resultDiv = document.getElementById('existing-result');
+            const iframe = document.getElementById('existing-iframe');
+            
+            resultDiv.innerHTML = '既存36協定管理画面をテスト中...';
+            
+            try {
+                const response = await fetch(`${baseUrl}/general_affairs_36agreement`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = '<span class="success">✅ 既存36協定管理画面の表示成功</span>';
+                    iframe.src = `${baseUrl}/general_affairs_36agreement`;
+                    iframe.style.display = 'block';
+                } else {
+                    resultDiv.innerHTML = '<span class="error">❌ 既存管理画面表示失敗: ' + response.status + '</span>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<span class="error">❌ エラー: ' + error.message + '</span>';
+            }
+        }
+    </script>
+</body>
+</html>

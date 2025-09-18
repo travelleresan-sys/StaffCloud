@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block title %}申請管理{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-clipboard-check me-2"></i>申請管理</h1>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>ダッシュボード
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- 承認待ち申請 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-clock-history me-2"></i>承認待ち申請</h2>
+    </div>
+</div>
+
+<!-- 有給休暇申請 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar-plus me-2"></i>有給休暇申請
+                    {% if pending_leave_requests %}
+                    <span class="badge bg-warning ms-2">{{ pending_leave_requests|length }}</span>
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if pending_leave_requests %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>申請者</th>
+                                <th>申請日</th>
+                                <th>休暇種別</th>
+                                <th>休暇期間</th>
+                                <th>日数</th>
+                                <th>理由</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for request in pending_leave_requests %}
+                            <tr>
+                                <td>
+                                    <strong>{{ request.employee.name }}</strong>
+                                    <br><small class="text-muted">ID: {{ request.employee.id }}</small>
+                                </td>
+                                <td>{{ request.created_at.strftime('%Y/%m/%d %H:%M') }}</td>
+                                <td>
+                                    {% if request.leave_type == 'annual_leave' %}<span class="badge bg-primary">年次有給</span>
+                                    {% elif request.leave_type == 'sick_leave' %}<span class="badge bg-warning">病気休暇</span>
+                                    {% elif request.leave_type == 'bereavement' %}<span class="badge bg-dark">忌引き</span>
+                                    {% elif request.leave_type == 'maternity_leave' %}<span class="badge bg-info">産前産後</span>
+                                    {% elif request.leave_type == 'special_leave' %}<span class="badge bg-secondary">特別休暇</span>
+                                    {% else %}<span class="badge bg-light text-dark">{{ request.leave_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ request.start_date.strftime('%Y/%m/%d') }}〜{{ request.end_date.strftime('%Y/%m/%d') }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-info">{{ request.days_requested }}日</span>
+                                </td>
+                                <td>{{ request.reason or '－' }}</td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ url_for('review_leave_request', request_id=request.id, action='approve') }}" 
+                                           class="btn btn-success" 
+                                           onclick="return confirm('{{ request.employee.name }}さんの有給休暇申請を承認しますか？')">
+                                            <i class="bi bi-check-lg"></i> 承認
+                                        </a>
+                                        <a href="{{ url_for('review_leave_request', request_id=request.id, action='reject') }}" 
+                                           class="btn btn-danger" 
+                                           onclick="return confirm('{{ request.employee.name }}さんの有給休暇申請を却下しますか？')">
+                                            <i class="bi bi-x-lg"></i> 却下
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3 text-muted">
+                    <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                    <p class="mt-2">承認待ちの有給休暇申請はありません。</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 個人情報更新申請 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-person-gear me-2"></i>個人情報更新申請
+                    {% if pending_personal_info_requests %}
+                    <span class="badge bg-warning ms-2">{{ pending_personal_info_requests|length }}</span>
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if pending_personal_info_requests %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>申請者</th>
+                                <th>申請日</th>
+                                <th>変更項目</th>
+                                <th>現在の値</th>
+                                <th>新しい値</th>
+                                <th>理由</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for request in pending_personal_info_requests %}
+                            <tr>
+                                <td>
+                                    <strong>{{ request.employee.name }}</strong>
+                                    <br><small class="text-muted">ID: {{ request.employee.id }}</small>
+                                </td>
+                                <td>{{ request.created_at.strftime('%Y/%m/%d %H:%M') }}</td>
+                                <td>
+                                    {% if request.request_type == 'address' %}<i class="bi bi-geo-alt me-1"></i>住所
+                                    {% elif request.request_type == 'phone' %}<i class="bi bi-telephone me-1"></i>電話番号
+                                    {% elif request.request_type == 'residence_card_expiry' %}<i class="bi bi-card-checklist me-1"></i>在留カード期限
+                                    {% elif request.request_type == 'residence_card_file' %}<i class="bi bi-file-earmark-image me-1"></i>在留カード画像・PDF
+                                    {% elif request.request_type == 'car_insurance_expiry' %}<i class="bi bi-car-front me-1"></i>自動車保険満了日
+                                    {% else %}{{ request.request_type }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if request.request_type == 'residence_card_file' %}
+                                        {% if request.current_value %}
+                                            <i class="bi bi-file-earmark me-1"></i>{{ request.current_value }}
+                                        {% else %}
+                                            未設定
+                                        {% endif %}
+                                    {% else %}
+                                        {{ request.current_value or '未設定' }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if request.request_type == 'residence_card_file' %}
+                                        <strong><i class="bi bi-file-earmark me-1"></i>{{ request.uploaded_filename or request.new_value }}</strong>
+                                    {% else %}
+                                        <strong>{{ request.new_value }}</strong>
+                                    {% endif %}
+                                </td>
+                                <td>{{ request.reason or '－' }}</td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ url_for('review_personal_info_request', request_id=request.id, action='approve') }}" 
+                                           class="btn btn-success" 
+                                           onclick="return confirm('{{ request.employee.name }}さんの個人情報更新申請を承認しますか？')">
+                                            <i class="bi bi-check-lg"></i> 承認
+                                        </a>
+                                        <a href="{{ url_for('review_personal_info_request', request_id=request.id, action='reject') }}" 
+                                           class="btn btn-danger" 
+                                           onclick="return confirm('{{ request.employee.name }}さんの個人情報更新申請を却下しますか？')">
+                                            <i class="bi bi-x-lg"></i> 却下
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3 text-muted">
+                    <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                    <p class="mt-2">承認待ちの個人情報更新申請はありません。</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 最近処理された申請 -->
+<div class="row">
+    <div class="col-12">
+        <h2><i class="bi bi-check2-circle me-2"></i>最近処理された申請</h2>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 有給休暇申請履歴 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">有給休暇申請履歴</h6>
+            </div>
+            <div class="card-body">
+                {% if recent_leave_requests %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>申請者</th>
+                                <th>期間</th>
+                                <th>状態</th>
+                                <th>処理日</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for request in recent_leave_requests %}
+                            <tr>
+                                <td>{{ request.employee.name }}</td>
+                                <td>{{ request.start_date.strftime('%m/%d') }}〜{{ request.end_date.strftime('%m/%d') }}</td>
+                                <td>
+                                    {% if request.status == 'approved' %}
+                                        <span class="badge bg-success">承認</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">却下</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ request.reviewed_at.strftime('%m/%d %H:%M') if request.reviewed_at else '－' }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">処理済みの申請がありません。</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 個人情報更新申請履歴 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">個人情報更新申請履歴</h6>
+            </div>
+            <div class="card-body">
+                {% if recent_personal_info_requests %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>申請者</th>
+                                <th>項目</th>
+                                <th>状態</th>
+                                <th>処理日</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for request in recent_personal_info_requests %}
+                            <tr>
+                                <td>{{ request.employee.name }}</td>
+                                <td>
+                                    {% if request.request_type == 'address' %}住所
+                                    {% elif request.request_type == 'phone' %}電話番号
+                                    {% elif request.request_type == 'residence_card_expiry' %}在留カード期限
+                                    {% elif request.request_type == 'residence_card_file' %}在留カード画像・PDF
+                                    {% elif request.request_type == 'car_insurance_expiry' %}自動車保険満了日
+                                    {% else %}{{ request.request_type }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if request.status == 'approved' %}
+                                        <span class="badge bg-success">承認</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">却下</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ request.reviewed_at.strftime('%m/%d %H:%M') if request.reviewed_at else '－' }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">処理済みの申請がありません。</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

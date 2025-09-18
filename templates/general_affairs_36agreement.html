@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+
+{% block title %}総務事務管理 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="bi bi-gear me-2"></i>総務事務管理
+                    </h1>
+                    <p class="text-muted mb-0">36協定、法定休日の労働基準管理（総務事務専用）</p>
+                </div>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('create_36agreement') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i>詳細な36協定を作成
+                    </a>
+                    <a href="{{ url_for('list_36agreements') }}" class="btn btn-outline-info">
+                        <i class="bi bi-list-ul me-1"></i>36協定一覧
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- タブ -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" id="agreementTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="agreement-tab" data-bs-toggle="tab" data-bs-target="#agreement" type="button" role="tab">
+                                <i class="bi bi-file-text me-2"></i>36協定管理
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="holidays-tab" data-bs-toggle="tab" data-bs-target="#holidays" type="button" role="tab">
+                                <i class="bi bi-calendar-event me-2"></i>法定休日設定
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="agreementTabContent">
+                        <!-- 36協定管理タブ -->
+                        <div class="tab-pane fade show active" id="agreement" role="tabpanel">
+                            <!-- 現在有効な36協定の表示 -->
+                            {% if current_agreement %}
+                            <div class="row g-3 mb-4">
+                                <div class="col-12">
+                                    <div class="card border-success">
+                                        <div class="card-header bg-success text-white">
+                                            <h6 class="mb-0">
+                                                <i class="bi bi-check-circle me-2"></i>現在有効な36協定
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-3">
+                                                    <small class="text-muted">提出日</small>
+                                                    <div class="fw-bold">{{ current_agreement.submission_date }}</div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <small class="text-muted">協定期間</small>
+                                                    <div class="fw-bold">{{ current_agreement.period_start }} ～ {{ current_agreement.period_end }}</div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <small class="text-muted">期限切れ日</small>
+                                                    <div class="fw-bold text-warning">{{ current_agreement.expiry_date }}</div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <small class="text-muted">上限時間</small>
+                                                    <div class="fw-bold">月{{ current_agreement.max_overtime_hours_monthly }}時間 / 年{{ current_agreement.max_overtime_hours_yearly }}時間</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- 新規36協定提出フォーム -->
+                            <form method="POST" action="{{ url_for('submit_agreement_36') }}">
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <h5 class="text-primary">
+                                            <i class="bi bi-plus-circle me-2"></i>新規36協定の提出
+                                        </h5>
+                                        <div class="alert alert-primary">
+                                            <small>
+                                                <strong>重要:</strong> 36協定により定められた時間外労働の上限を設定してください。
+                                                法定労働時間（1日8時間、週40時間）を超える労働には36協定の届出が必要です。
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    <!-- 基本情報 -->
+                                    <div class="col-md-6">
+                                        <label for="labor_office_name" class="form-label">提出先労働基準監督署名</label>
+                                        <input type="text" class="form-control" id="labor_office_name" name="labor_office_name" 
+                                               value="{{ labor_settings.labor_office_name if labor_settings else '' }}" 
+                                               placeholder="例：東京労働基準監督署">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="submission_method" class="form-label">提出方法</label>
+                                        <select class="form-select" id="submission_method" name="submission_method">
+                                            <option value="">選択してください</option>
+                                            <option value="window">窓口提出</option>
+                                            <option value="mail">郵送</option>
+                                            <option value="electronic">電子申請</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- 提出・期間情報 -->
+                                    <div class="col-md-3">
+                                        <label for="submission_date" class="form-label">
+                                            <strong>提出日</strong> <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="date" class="form-control" id="submission_date" name="submission_date" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="period_start" class="form-label">
+                                            <strong>協定期間開始</strong> <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="date" class="form-control" id="period_start" name="period_start" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="period_end" class="form-label">
+                                            <strong>協定期間終了</strong> <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="date" class="form-control" id="period_end" name="period_end" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="expiry_date" class="form-label">
+                                            <strong>期限切れ日</strong> <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="date" class="form-control border-warning" id="expiry_date" name="expiry_date" required>
+                                        <small class="text-warning">36協定の有効期限</small>
+                                    </div>
+
+                                    <!-- 時間外労働上限 -->
+                                    <div class="col-md-4">
+                                        <label for="max_overtime_hours_monthly" class="form-label">
+                                            <strong>月間上限時間</strong> <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="max_overtime_hours_monthly" name="max_overtime_hours_monthly" 
+                                                   value="45" min="0" max="100" required>
+                                            <span class="input-group-text">時間</span>
+                                        </div>
+                                        <small class="text-muted">通常は月45時間以内</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="max_overtime_hours_yearly" class="form-label">
+                                            <strong>年間上限時間</strong> <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="max_overtime_hours_yearly" name="max_overtime_hours_yearly" 
+                                                   value="360" min="0" max="720" required>
+                                            <span class="input-group-text">時間</span>
+                                        </div>
+                                        <small class="text-muted">法定上限は年720時間</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="document_number" class="form-label">届出番号</label>
+                                        <input type="text" class="form-control" id="document_number" name="document_number" 
+                                               placeholder="例：労基署第○○号">
+                                    </div>
+
+                                    <!-- 追加情報 -->
+                                    <div class="col-md-6">
+                                        <label for="representative_name" class="form-label">提出時の代表者名</label>
+                                        <input type="text" class="form-control" id="representative_name" name="representative_name" 
+                                               value="{{ company_settings.representative_name if company_settings else '' }}">
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label for="notes" class="form-label">備考・メモ</label>
+                                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                                placeholder="特記事項や備考がありましたらご記入ください"></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="text-end mt-4">
+                                    <button type="submit" class="btn btn-success btn-lg">
+                                        <i class="bi bi-upload me-2"></i>36協定を提出済みとして記録
+                                    </button>
+                                </div>
+                            </form>
+
+                            <!-- 提出履歴 -->
+                            {% if agreement_history %}
+                            <div class="row g-3 mt-4">
+                                <div class="col-12">
+                                    <hr>
+                                    <h5 class="text-info">
+                                        <i class="bi bi-clock-history me-2"></i>提出履歴
+                                    </h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>提出日</th>
+                                                    <th>協定期間</th>
+                                                    <th>期限切れ日</th>
+                                                    <th>月間上限</th>
+                                                    <th>年間上限</th>
+                                                    <th>状態</th>
+                                                    <th>備考</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for history in agreement_history %}
+                                                <tr class="{% if history.is_active %}table-success{% elif history.status == 'expired' %}table-warning{% endif %}">
+                                                    <td>{{ history.submission_date }}</td>
+                                                    <td>{{ history.period_start }}<br><small>～ {{ history.period_end }}</small></td>
+                                                    <td class="{% if history.status == 'expired' %}text-warning{% endif %}">{{ history.expiry_date }}</td>
+                                                    <td>{{ history.max_overtime_hours_monthly }}時間</td>
+                                                    <td>{{ history.max_overtime_hours_yearly }}時間</td>
+                                                    <td>
+                                                        {% if history.is_active and history.status == 'active' %}
+                                                            <span class="badge bg-success">有効</span>
+                                                        {% elif history.status == 'expired' %}
+                                                            <span class="badge bg-warning">期限切れ</span>
+                                                        {% elif history.status == 'superseded' %}
+                                                            <span class="badge bg-secondary">更新済み</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <small>{{ history.notes[:50] }}{% if history.notes|length > 50 %}...{% endif %}</small>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 法定休日設定タブ -->
+                        <div class="tab-pane fade" id="holidays" role="tabpanel">
+                            <form method="POST" action="{{ url_for('save_holiday_settings') }}">
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <h5 class="text-info">
+                                            <i class="bi bi-calendar3 me-2"></i>週休設定
+                                        </h5>
+                                        <div class="alert alert-info">
+                                            <i class="bi bi-info-circle me-2"></i>
+                                            <strong>法定休日とは:</strong> 労働基準法第35条により、使用者は労働者に対して毎週少なくとも1回の休日を与えなければなりません。この休日を「法定休日」と呼び、法定休日に労働させる場合は35%以上の割増賃金が必要です。
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-12">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h6 class="mb-0">
+                                                    <i class="bi bi-calendar-week me-2"></i>曜日別法定休日設定
+                                                </h6>
+                                                <small class="text-muted">法定休日として設定した曜日の労働には35%割増賃金が適用されます</small>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-3 col-6">
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="form-check-input" type="checkbox" id="monday_legal_holiday" name="monday_legal_holiday" 
+                                                                   {{ 'checked' if holiday_settings and holiday_settings.monday_legal_holiday else '' }}>
+                                                            <label class="form-check-label" for="monday_legal_holiday">
+                                                                <strong>月曜日</strong>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-6">
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="form-check-input" type="checkbox" id="tuesday_legal_holiday" name="tuesday_legal_holiday" 
+                                                                   {{ 'checked' if holiday_settings and holiday_settings.tuesday_legal_holiday else '' }}>
+                                                            <label class="form-check-label" for="tuesday_legal_holiday">
+                                                                <strong>火曜日</strong>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-6">
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="form-check-input" type="checkbox" id="wednesday_legal_holiday" name="wednesday_legal_holiday" 
+                                                                   {{ 'checked' if holiday_settings and holiday_settings.wednesday_legal_holiday else '' }}>
+                                                            <label class="form-check-label" for="wednesday_legal_holiday">
+                                                                <strong>水曜日</strong>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-6">
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="form-check-input" type="checkbox" id="thursday_legal_holiday" name="thursday_legal_holiday" 
+                                                                   {{ 'checked' if holiday_settings and holiday_settings.thursday_legal_holiday else '' }}>
+                                                            <label class="form-check-label" for="thursday_legal_holiday">
+                                                                <strong>木曜日</strong>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-6">
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="form-check-input" type="checkbox" id="friday_legal_holiday" name="friday_legal_holiday" 
+                                                                   {{ 'checked' if holiday_settings and holiday_settings.friday_legal_holiday else '' }}>
+                                                            <label class="form-check-label" for="friday_legal_holiday">
+                                                                <strong>金曜日</strong>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-6">
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="form-check-input" type="checkbox" id="saturday_legal_holiday" name="saturday_legal_holiday" 
+                                                                   {{ 'checked' if holiday_settings and holiday_settings.saturday_legal_holiday else '' }}>
+                                                            <label class="form-check-label" for="saturday_legal_holiday">
+                                                                <strong>土曜日</strong>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-6">
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="form-check-input" type="checkbox" id="sunday_legal_holiday" name="sunday_legal_holiday" 
+                                                                   {{ 'checked' if holiday_settings and holiday_settings.sunday_legal_holiday else '' }}>
+                                                            <label class="form-check-label" for="sunday_legal_holiday">
+                                                                <strong>日曜日</strong>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="alert alert-warning mt-3">
+                                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                                    <strong>注意:</strong> 労働基準法により、週1回以上の法定休日を設定する必要があります。
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-12">
+                                        <hr class="my-4">
+                                        <h5 class="text-warning">
+                                            <i class="bi bi-calendar-event me-2"></i>週の起算日設定
+                                        </h5>
+                                        <p class="text-muted">労働時間の週40時間制限を計算する際の週の起算日を設定します。</p>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <label for="week_start_day" class="form-label">週の起算日</label>
+                                        <select class="form-select" id="week_start_day" name="week_start_day">
+                                            <option value="0" {{ 'selected' if holiday_settings and holiday_settings.week_start_day == 0 else 'selected' }}>月曜日</option>
+                                            <option value="1" {{ 'selected' if holiday_settings and holiday_settings.week_start_day == 1 else '' }}>火曜日</option>
+                                            <option value="2" {{ 'selected' if holiday_settings and holiday_settings.week_start_day == 2 else '' }}>水曜日</option>
+                                            <option value="3" {{ 'selected' if holiday_settings and holiday_settings.week_start_day == 3 else '' }}>木曜日</option>
+                                            <option value="4" {{ 'selected' if holiday_settings and holiday_settings.week_start_day == 4 else '' }}>金曜日</option>
+                                            <option value="5" {{ 'selected' if holiday_settings and holiday_settings.week_start_day == 5 else '' }}>土曜日</option>
+                                            <option value="6" {{ 'selected' if holiday_settings and holiday_settings.week_start_day == 6 else '' }}>日曜日</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="text-end mt-4">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-save me-1"></i>法定休日設定を保存
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 注意事項 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning bg-opacity-10">
+                    <h6 class="card-title mb-0 text-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>重要な注意事項
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li><strong>企業情報:</strong> 会社の基本情報は各種帳票や証明書、公式文書で使用されますので正確に入力してください。</li>
+                        <li><strong>36協定の法的効力:</strong> このシステムでの記録は管理目的であり、実際の労働基準監督署への届出は別途行ってください。</li>
+                        <li><strong>法定休日の設定:</strong> 設定された法定休日は給与計算時の割増賃金計算に反映されます。</li>
+                        <li><strong>時間外労働の上限:</strong> 36協定で定めた上限時間を超える労働は法律違反となりますのでご注意ください。</li>
+                        <li><strong>法律の確認:</strong> 労働基準法に関する詳細は、管轄の労働基準監督署にご相談ください。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}社会保険資格取得届作成 - StaffCloud{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        border: 2px solid #e3f2fd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 25px;
+        background: #fafafa;
+    }
+    .required-field {
+        color: #dc3545;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-primary">
+                <div class="card-header bg-primary bg-opacity-10">
+                    <h4 class="card-title mb-0 text-primary">
+                        <i class="bi bi-plus-circle me-2"></i>社会保険資格取得届作成
+                    </h4>
+                    <p class="text-muted mb-0">健康保険・厚生年金保険被保険者資格取得届を作成します（厚生労働省準拠）</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- フラッシュメッセージ -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- 社会保険資格取得届作成フォーム -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <form action="{{ url_for('create_social_insurance_acquisition') }}" method="POST" class="needs-validation" novalidate>
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-plus-circle me-2"></i>社会保険資格取得届作成
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- 基本情報セクション -->
+                        <div class="form-section">
+                            <h6 class="mb-3 text-primary">
+                                <i class="bi bi-person-fill me-2"></i>基本情報
+                            </h6>
+                            
+                            <!-- 従業員選択 -->
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="employee_id" class="form-label">
+                                        <span class="required-field">*</span> 従業員選択
+                                    </label>
+                                    <select class="form-select" id="employee_id" name="employee_id" required>
+                                        <option value="">-- 従業員を選択してください --</option>
+                                        {% for employee in employees %}
+                                            <option value="{{ employee.id }}" 
+                                                    data-name="{{ employee.name }}"
+                                                    data-kana="{{ employee.kana_name or '' }}"
+                                                    data-birth="{{ employee.birth_date.strftime('%Y-%m-%d') if employee.birth_date else '' }}"
+                                                    data-join="{{ employee.join_date.strftime('%Y-%m-%d') if employee.join_date else '' }}"
+                                                    data-mynumber="{{ employee.my_number or '' }}">
+                                                {{ employee.name }} ({{ employee.employee_number }})
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="acquisition_date" class="form-label">
+                                        <span class="required-field">*</span> 資格取得年月日
+                                    </label>
+                                    <input type="date" class="form-control" id="acquisition_date" name="acquisition_date" required>
+                                </div>
+                            </div>
+
+                            <!-- 従業員詳細情報 -->
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="employee_name" class="form-label">氏名</label>
+                                    <input type="text" class="form-control" id="employee_name" name="employee_name" readonly>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="employee_kana" class="form-label">フリガナ</label>
+                                    <input type="text" class="form-control" id="employee_kana" name="employee_kana">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="my_number" class="form-label">
+                                        <span class="required-field">*</span> 個人番号（マイナンバー）
+                                    </label>
+                                    <input type="text" class="form-control" id="my_number" name="my_number" 
+                                           placeholder="12桁の個人番号" maxlength="12" required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="birth_date" class="form-label">
+                                        <span class="required-field">*</span> 生年月日
+                                    </label>
+                                    <input type="date" class="form-control" id="birth_date" name="birth_date" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="gender" class="form-label">
+                                        <span class="required-field">*</span> 性別
+                                    </label>
+                                    <select class="form-select" id="gender" name="gender" required>
+                                        <option value="">-- 選択してください --</option>
+                                        <option value="男">男</option>
+                                        <option value="女">女</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 労働条件セクション -->
+                        <div class="form-section">
+                            <h6 class="mb-3 text-primary">
+                                <i class="bi bi-briefcase-fill me-2"></i>労働条件
+                            </h6>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="employment_type" class="form-label">
+                                        <span class="required-field">*</span> 雇用形態
+                                    </label>
+                                    <select class="form-select" id="employment_type" name="employment_type" required>
+                                        <option value="">-- 選択してください --</option>
+                                        <option value="正社員">正社員</option>
+                                        <option value="契約社員">契約社員</option>
+                                        <option value="パート">パート</option>
+                                        <option value="アルバイト">アルバイト</option>
+                                        <option value="嘱託">嘱託</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="monthly_salary" class="form-label">
+                                        <span class="required-field">*</span> 標準報酬月額（円）
+                                    </label>
+                                    <input type="number" class="form-control" id="monthly_salary" name="monthly_salary" 
+                                           min="0" step="1000" placeholder="例：250000" required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <label for="job_description" class="form-label">従事する業務の内容</label>
+                                    <textarea class="form-control" id="job_description" name="job_description" rows="2"
+                                              placeholder="具体的な業務内容を記入してください"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 扶養家族セクション -->
+                        <div class="form-section">
+                            <h6 class="mb-3 text-primary">
+                                <i class="bi bi-people-fill me-2"></i>扶養家族
+                            </h6>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="has_dependents" name="has_dependents">
+                                        <label class="form-check-label" for="has_dependents">
+                                            扶養家族がいる場合はチェックしてください
+                                        </label>
+                                    </div>
+                                    <small class="text-muted">
+                                        ※ 扶養家族がいる場合は、別途「健康保険被扶養者異動届」の提出が必要です
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 提出ボタン -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{{ url_for('company_submissions') }}" class="btn btn-outline-secondary me-md-2">
+                                        <i class="bi bi-arrow-left me-2"></i>戻る
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-plus-circle me-1"></i>資格取得届作成
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 従業員選択時の自動入力
+    const employeeSelect = document.getElementById('employee_id');
+    const employeeName = document.getElementById('employee_name');
+    const employeeKana = document.getElementById('employee_kana');
+    const birthDate = document.getElementById('birth_date');
+    const myNumber = document.getElementById('my_number');
+    const acquisitionDate = document.getElementById('acquisition_date');
+
+    employeeSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.value) {
+            employeeName.value = selectedOption.dataset.name || '';
+            employeeKana.value = selectedOption.dataset.kana || '';
+            birthDate.value = selectedOption.dataset.birth || '';
+            myNumber.value = selectedOption.dataset.mynumber || '';
+            
+            // 入社日を資格取得日のデフォルトに設定
+            const joinDate = selectedOption.dataset.join;
+            if (joinDate && !acquisitionDate.value) {
+                acquisitionDate.value = joinDate;
+            }
+        } else {
+            employeeName.value = '';
+            employeeKana.value = '';
+            birthDate.value = '';
+            myNumber.value = '';
+        }
+    });
+
+    // フォームバリデーション
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+
+    // マイナンバー入力制限（数字のみ）
+    const myNumberInput = document.getElementById('my_number');
+    myNumberInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}人事評価編集 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0">
+                <i class="bi bi-pencil-square me-2"></i>人事評価編集
+            </h1>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('performance_evaluation') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>評価管理に戻る
+                </a>
+                <a href="{{ url_for('view_evaluation', evaluation_id=evaluation.id) }}" class="btn btn-outline-info">
+                    <i class="bi bi-eye me-1"></i>詳細表示
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clipboard-check me-2"></i>評価編集: {{ evaluation.employee.name }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <!-- 基本情報（読み取り専用表示） -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">対象スタッフ</label>
+                                <div class="form-control-plaintext border p-2 bg-light">
+                                    <strong>{{ evaluation.employee.name }}</strong>
+                                    {% if evaluation.employee.department %}({{ evaluation.employee.department }}){% endif %}
+                                    {% if evaluation.employee.position %} - {{ evaluation.employee.position }}{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="evaluation_period" class="form-label">評価期間 <span class="text-danger">*</span></label>
+                                <select class="form-select" id="evaluation_period" name="evaluation_period" required>
+                                    <option value="">評価期間を選択してください</option>
+                                    <option value="2025年上期" {{ 'selected' if evaluation.evaluation_period == '2025年上期' else '' }}>2025年上期</option>
+                                    <option value="2025年下期" {{ 'selected' if evaluation.evaluation_period == '2025年下期' else '' }}>2025年下期</option>
+                                    <option value="2024年下期" {{ 'selected' if evaluation.evaluation_period == '2024年下期' else '' }}>2024年下期</option>
+                                    <option value="2024年上期" {{ 'selected' if evaluation.evaluation_period == '2024年上期' else '' }}>2024年上期</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 現在の総合評価表示 -->
+                    {% if evaluation.overall_rating %}
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>現在の総合評価: </strong>
+                                <span class="badge fs-6
+                                {% if evaluation.overall_rating >= 4.0 %}bg-success
+                                {% elif evaluation.overall_rating >= 3.0 %}bg-primary
+                                {% elif evaluation.overall_rating >= 2.0 %}bg-warning
+                                {% else %}bg-danger{% endif %}">
+                                    {{ "%.1f"|format(evaluation.overall_rating) }}
+                                </span>
+                                <small class="text-muted ms-2">（各項目スコアの平均値として自動計算されます）</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- 評価項目 -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="mb-3"><i class="bi bi-star me-2"></i>評価項目</h6>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="performance_score" class="form-label">業績評価</label>
+                                <select class="form-select" id="performance_score" name="performance_score">
+                                    <option value="">選択してください</option>
+                                    <option value="5.0" {{ 'selected' if evaluation.performance_score == 5.0 else '' }}>5.0 - 期待を大幅に上回る</option>
+                                    <option value="4.0" {{ 'selected' if evaluation.performance_score == 4.0 else '' }}>4.0 - 期待を上回る</option>
+                                    <option value="3.0" {{ 'selected' if evaluation.performance_score == 3.0 else '' }}>3.0 - 期待通り</option>
+                                    <option value="2.0" {{ 'selected' if evaluation.performance_score == 2.0 else '' }}>2.0 - 期待をやや下回る</option>
+                                    <option value="1.0" {{ 'selected' if evaluation.performance_score == 1.0 else '' }}>1.0 - 期待を大幅に下回る</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="behavior_score" class="form-label">行動評価</label>
+                                <select class="form-select" id="behavior_score" name="behavior_score">
+                                    <option value="">選択してください</option>
+                                    <option value="5.0" {{ 'selected' if evaluation.behavior_score == 5.0 else '' }}>5.0 - 期待を大幅に上回る</option>
+                                    <option value="4.0" {{ 'selected' if evaluation.behavior_score == 4.0 else '' }}>4.0 - 期待を上回る</option>
+                                    <option value="3.0" {{ 'selected' if evaluation.behavior_score == 3.0 else '' }}>3.0 - 期待通り</option>
+                                    <option value="2.0" {{ 'selected' if evaluation.behavior_score == 2.0 else '' }}>2.0 - 期待をやや下回る</option>
+                                    <option value="1.0" {{ 'selected' if evaluation.behavior_score == 1.0 else '' }}>1.0 - 期待を大幅に下回る</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="potential_score" class="form-label">潜在能力評価</label>
+                                <select class="form-select" id="potential_score" name="potential_score">
+                                    <option value="">選択してください</option>
+                                    <option value="5.0" {{ 'selected' if evaluation.potential_score == 5.0 else '' }}>5.0 - 期待を大幅に上回る</option>
+                                    <option value="4.0" {{ 'selected' if evaluation.potential_score == 4.0 else '' }}>4.0 - 期待を上回る</option>
+                                    <option value="3.0" {{ 'selected' if evaluation.potential_score == 3.0 else '' }}>3.0 - 期待通り</option>
+                                    <option value="2.0" {{ 'selected' if evaluation.potential_score == 2.0 else '' }}>2.0 - 期待をやや下回る</option>
+                                    <option value="1.0" {{ 'selected' if evaluation.potential_score == 1.0 else '' }}>1.0 - 期待を大幅に下回る</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- コメント欄 -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="mb-3"><i class="bi bi-chat-text me-2"></i>詳細コメント</h6>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="strengths" class="form-label">強み・優れている点</label>
+                                <textarea class="form-control" id="strengths" name="strengths" rows="4" 
+                                          placeholder="該当する強みや優れている点を記入してください">{{ evaluation.strengths or '' }}</textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="areas_for_improvement" class="form-label">改善が必要な点</label>
+                                <textarea class="form-control" id="areas_for_improvement" name="areas_for_improvement" rows="4" 
+                                          placeholder="改善が必要な点や今後の課題を記入してください">{{ evaluation.areas_for_improvement or '' }}</textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="goals_next_period" class="form-label">次期目標</label>
+                                <textarea class="form-control" id="goals_next_period" name="goals_next_period" rows="4" 
+                                          placeholder="次の評価期間での目標や期待を記入してください">{{ evaluation.goals_next_period or '' }}</textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="evaluator_comment" class="form-label">評価者コメント</label>
+                                <textarea class="form-control" id="evaluator_comment" name="evaluator_comment" rows="4" 
+                                          placeholder="全体的な評価コメントを記入してください">{{ evaluation.evaluator_comment or '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ステータス -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="status" class="form-label">ステータス</label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="draft" {{ 'selected' if evaluation.status == 'draft' else '' }}>下書き</option>
+                                    <option value="submitted" {{ 'selected' if evaluation.status == 'submitted' else '' }}>提出済み</option>
+                                    {% if evaluation.status in ['hr_approved', 'approved'] %}
+                                    <option value="hr_approved" {{ 'selected' if evaluation.status == 'hr_approved' else '' }}>人事承認済み</option>
+                                    <option value="approved" {{ 'selected' if evaluation.status == 'approved' else '' }}>最終承認済み</option>
+                                    {% endif %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">最終更新</label>
+                                <div class="form-control-plaintext border p-2 bg-light">
+                                    {{ evaluation.updated_at.strftime('%Y年%m月%d日 %H:%M') if evaluation.updated_at else '-' }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 送信ボタン -->
+                    <div class="row">
+                        <div class="col-12">
+                            <hr>
+                            <div class="d-flex justify-content-end gap-2">
+                                <a href="{{ url_for('performance_evaluation') }}" class="btn btn-secondary">
+                                    <i class="bi bi-x-lg me-1"></i>キャンセル
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-lg me-1"></i>評価を更新
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

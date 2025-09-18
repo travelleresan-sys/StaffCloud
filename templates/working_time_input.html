@@ -1,0 +1,797 @@
+{% extends "base.html" %}
+
+{% block title %}労働時間入力 - StaffCloud{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 日別入力テーブルの時刻入力フォームの矢印ボタン制御 */
+.time-input-transparent input[type="number"] {
+    -moz-appearance: textfield; /* Firefox用 */
+    padding-left: 8px; /* 左側の余白を増加 */
+    padding-right: 8px; /* 右側の余白を増加 */
+    text-align: center; /* 数字を中央揃え */
+    font-size: 12px; /* フォントサイズを調整 */
+    min-width: 45px; /* 最小幅を確保 */
+    box-sizing: border-box; /* ボックスサイジングを明示 */
+}
+
+/* WebKit系ブラウザの矢印ボタンを通常時は非表示 */
+.time-input-transparent input[type="number"]::-webkit-outer-spin-button,
+.time-input-transparent input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    opacity: 0;
+    margin: 0;
+    width: 0;
+    height: 100%;
+    position: absolute;
+    right: 0;
+    cursor: pointer;
+}
+
+/* ホバー時に矢印ボタンを表示 */
+.time-input-transparent input[type="number"]:hover::-webkit-outer-spin-button,
+.time-input-transparent input[type="number"]:hover::-webkit-inner-spin-button,
+.time-input-transparent input[type="number"]:focus::-webkit-outer-spin-button,
+.time-input-transparent input[type="number"]:focus::-webkit-inner-spin-button {
+    -webkit-appearance: inner-spin-button;
+    opacity: 1;
+    width: 18px;
+}
+
+/* ホバー時の背景とパディング調整 */
+.time-input-transparent input[type="number"]:hover,
+.time-input-transparent input[type="number"]:focus {
+    padding-right: 20px; /* 矢印ボタン分のスペースを確保 */
+    padding-left: 8px; /* 左側余白を維持 */
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-clock me-2"></i>労働時間入力
+                </h1>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('accounting_dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>経理ダッシュボード
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- フィルター -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="employee_id" class="form-label">従業員</label>
+                            <select class="form-select" id="employee_id" name="employee_id">
+                                <option value="">全従業員</option>
+                                {% for employee in employees %}
+                                <option value="{{ employee.id }}" {{ 'selected' if request.args.get('employee_id') == employee.id|string else '' }}>
+                                    {{ employee.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="year" class="form-label">年</label>
+                            <select class="form-select" id="year" name="year">
+                                {% for year in years %}
+                                <option value="{{ year }}" {{ 'selected' if request.args.get('year') == year|string else '' }}>{{ year }}年</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="month" class="form-label">月</label>
+                            <select class="form-select" id="month" name="month">
+                                {% for month in range(1, 13) %}
+                                <option value="{{ month }}" {{ 'selected' if request.args.get('month') == month|string else '' }}>{{ month }}月</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="bi bi-search me-1"></i>表示
+                            </button>
+                            <a href="{{ url_for('working_time_input') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-clockwise me-1"></i>リセット
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 労働時間入力フォーム -->
+    {% if selected_employee %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-person-badge me-2"></i>{{ selected_employee.name }} - {{ selected_year }}年{{ selected_month }}月
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- 一括設定機能 -->
+                    <div class="card mb-4 border-info">
+                        <div class="card-header bg-info bg-opacity-10">
+                            <h6 class="card-title mb-0 text-info">
+                                <i class="bi bi-lightning me-2"></i>一括設定
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <!-- 曜日選択 -->
+                                <div class="col-md-3">
+                                    <label class="form-label"><strong>対象曜日</strong></label>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <input type="checkbox" class="btn-check" id="bulk-mon" value="0">
+                                        <label class="btn btn-outline-primary btn-sm" for="bulk-mon">月</label>
+                                        
+                                        <input type="checkbox" class="btn-check" id="bulk-tue" value="1">
+                                        <label class="btn btn-outline-primary btn-sm" for="bulk-tue">火</label>
+                                        
+                                        <input type="checkbox" class="btn-check" id="bulk-wed" value="2">
+                                        <label class="btn btn-outline-primary btn-sm" for="bulk-wed">水</label>
+                                        
+                                        <input type="checkbox" class="btn-check" id="bulk-thu" value="3">
+                                        <label class="btn btn-outline-primary btn-sm" for="bulk-thu">木</label>
+                                        
+                                        <input type="checkbox" class="btn-check" id="bulk-fri" value="4">
+                                        <label class="btn btn-outline-primary btn-sm" for="bulk-fri">金</label>
+                                        
+                                        <input type="checkbox" class="btn-check" id="bulk-sat" value="5">
+                                        <label class="btn btn-outline-secondary btn-sm" for="bulk-sat">土</label>
+                                        
+                                        <input type="checkbox" class="btn-check" id="bulk-sun" value="6">
+                                        <label class="btn btn-outline-danger btn-sm" for="bulk-sun">日</label>
+                                    </div>
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-outline-info btn-sm me-1" onclick="selectWeekdays()" title="平日（月〜金）のみ選択">
+                                            <i class="bi bi-briefcase me-1"></i>平日のみ
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectWeekends()" title="土日のみ選択">
+                                            <i class="bi bi-calendar-heart me-1"></i>土日のみ
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 始業時刻 -->
+                                <div class="col-md-2">
+                                    <label class="form-label"><strong>始業時刻</strong></label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control" id="bulk-start-hour" 
+                                               min="0" max="23" placeholder="時" value="9" style="max-width: 85px;">
+                                        <span class="input-group-text">:</span>
+                                        <input type="number" class="form-control" id="bulk-start-minute" 
+                                               min="0" max="59" placeholder="分" value="0" style="max-width: 85px;">
+                                    </div>
+                                </div>
+                                
+                                <!-- 終業時刻 -->
+                                <div class="col-md-2">
+                                    <label class="form-label"><strong>終業時刻</strong></label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control" id="bulk-end-hour" 
+                                               min="0" max="23" placeholder="時" value="18" style="max-width: 85px;">
+                                        <span class="input-group-text">:</span>
+                                        <input type="number" class="form-control" id="bulk-end-minute" 
+                                               min="0" max="59" placeholder="分" value="0" style="max-width: 85px;">
+                                    </div>
+                                </div>
+                                
+                                <!-- 休憩時間 -->
+                                <div class="col-md-2">
+                                    <label class="form-label"><strong>休憩時間</strong></label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control" id="bulk-break-time" 
+                                               min="0" max="480" step="15" placeholder="分" value="60">
+                                        <span class="input-group-text">分</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- 実行ボタン -->
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button type="button" class="btn btn-info btn-sm me-2" onclick="applyBulkSettings()">
+                                        <i class="bi bi-lightning me-1"></i>一括適用
+                                    </button>
+                                    <button type="button" class="btn btn-outline-warning btn-sm" onclick="clearBulkSettings()">
+                                        <i class="bi bi-eraser me-1"></i>クリア
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form method="POST">
+                        <input type="hidden" name="employee_id" value="{{ selected_employee.id }}">
+                        <input type="hidden" name="year" value="{{ selected_year }}">
+                        <input type="hidden" name="month" value="{{ selected_month }}">
+                        
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="4%">日</th>
+                                        <th width="4%">曜日</th>
+                                        <th width="12%">始業時刻</th>
+                                        <th width="12%">終業時刻</th>
+                                        <th width="6%">休憩(分)</th>
+                                        <th width="8%">法定内<br><small class="text-muted">労働時間</small></th>
+                                        <th width="8%">法定外<br><small class="text-warning">労働(25%)</small></th>
+                                        <th width="8%">法定休日<br><small class="text-danger">労働(35%)</small></th>
+                                        <th width="6%">有給</th>
+                                        <th width="6%">特休</th>
+                                        <th width="6%">欠勤</th>
+                                        <th width="6%">休業</th>
+                                        <th width="16%">備考</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for day_data in calendar_days %}
+                                    <tr class="{{ 'table-secondary' if day_data.is_legal_holiday else '' }}" data-weekday="{{ day_data.weekday }}">
+                                        <td>{{ day_data.day }}</td>
+                                        <td class="{{ 'text-danger' if day_data.weekday == 6 else 'text-primary' if day_data.weekday == 5 else '' }}">
+                                            {{ day_data.weekday_name }}
+                                        </td>
+                                        <td>
+                                            <div class="input-group input-group-sm time-input-transparent">
+                                                <input type="number" class="form-control" 
+                                                       name="start_hour_{{ day_data.day }}" 
+                                                       value="{{ day_data.start_hour or '' }}" 
+                                                       min="0" max="23" placeholder="時"
+                                                       style="max-width: 105px;">
+                                                <span class="input-group-text">:</span>
+                                                <input type="number" class="form-control" 
+                                                       name="start_minute_{{ day_data.day }}" 
+                                                       value="{{ day_data.start_minute or '' }}" 
+                                                       min="0" max="59" placeholder="分"
+                                                       style="max-width: 105px;">
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group input-group-sm time-input-transparent">
+                                                <input type="number" class="form-control" 
+                                                       name="end_hour_{{ day_data.day }}" 
+                                                       value="{{ day_data.end_hour or '' }}" 
+                                                       min="0" max="23" placeholder="時"
+                                                       style="max-width: 105px;">
+                                                <span class="input-group-text">:</span>
+                                                <input type="number" class="form-control" 
+                                                       name="end_minute_{{ day_data.day }}" 
+                                                       value="{{ day_data.end_minute or '' }}" 
+                                                       min="0" max="59" placeholder="分"
+                                                       style="max-width: 105px;">
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm" 
+                                                   name="break_time_{{ day_data.day }}" 
+                                                   value="{{ day_data.break_time or 0 }}" 
+                                                   min="0" max="480" step="15">
+                                        </td>
+                                        <!-- 法定内労働時間 -->
+                                        <td class="text-center text-muted" id="regular_{{ day_data.day }}">
+                                            <small>-</small>
+                                        </td>
+                                        <!-- 法定外労働時間(25%) -->
+                                        <td class="text-center text-warning" id="overtime_{{ day_data.day }}">
+                                            <small>-</small>
+                                        </td>
+                                        <!-- 法定休日労働時間(35%) -->
+                                        <td class="text-center text-danger" id="holiday_{{ day_data.day }}">
+                                            <small>-</small>
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="checkbox" class="form-check-input" 
+                                                   name="paid_leave_{{ day_data.day }}" 
+                                                   {{ 'checked' if day_data.is_paid_leave else '' }}>
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="checkbox" class="form-check-input" 
+                                                   name="special_leave_{{ day_data.day }}" 
+                                                   {{ 'checked' if day_data.is_special_leave else '' }}>
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="checkbox" class="form-check-input" 
+                                                   name="absence_{{ day_data.day }}" 
+                                                   {{ 'checked' if day_data.is_absence else '' }}>
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="checkbox" class="form-check-input" 
+                                                   name="company_closure_{{ day_data.day }}" 
+                                                   {{ 'checked' if day_data.is_company_closure else '' }}>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm" 
+                                                   name="remarks_{{ day_data.day }}" 
+                                                   value="{{ day_data.remarks or '' }}" 
+                                                   placeholder="備考">
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="d-flex justify-content-end gap-2 mt-3">
+                            <button type="submit" name="action" value="save" class="btn btn-primary">
+                                <i class="bi bi-save me-1"></i>保存
+                            </button>
+                            <button type="submit" name="action" value="calculate" class="btn btn-success">
+                                <i class="bi bi-calculator me-1"></i>給与計算実行
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-calendar-week display-1 text-muted"></i>
+                    <p class="lead text-muted mt-3">従業員、年月を選択して労働時間を入力してください。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 操作説明 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>操作方法
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li><strong>一括設定:</strong> 曜日を選択して始業・終業時刻を一括で設定可能（平日選択・休日選択ボタンで簡単選択）</li>
+                        <li><strong>始業時刻・終業時刻:</strong> 時間（0-23）と分（0-59）を個別入力（例：9時00分, 18時00分）</li>
+                        <li><strong>休憩時間:</strong> 分単位で入力（例：60分 = 1時間休憩）</li>
+                        <li><strong>労働時間計算:</strong> 労働基準法準拠で自動計算
+                            <ul class="small text-muted mt-1">
+                                <li>法定内労働時間：週40時間以内、1日8時間以内</li>
+                                <li>法定外労働時間：週40時間超過または1日8時間超過（25%割増）</li>
+                                <li>法定休日労働時間：法定休日の全労働時間（35%割増）</li>
+                            </ul>
+                        </li>
+                        <li><strong>各種休暇:</strong> 該当する場合はチェックボックスにチェック</li>
+                        <li><strong>保存:</strong> 入力データを保存、週40時間制限に基づき労働時間を自動調整</li>
+                        <li><strong>給与計算実行:</strong> 保存後、自動的に給与計算を実行</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 時刻入力の自動計算
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.querySelector('tbody');
+    if (table) {
+        table.addEventListener('change', function(e) {
+            if (e.target.type === 'number') {
+                const row = e.target.closest('tr');
+                updateRowCalculation(row);
+            }
+        });
+        
+        // 初期表示時にも計算実行
+        document.querySelectorAll('tbody tr').forEach(row => {
+            updateRowCalculation(row);
+        });
+        
+        // 初期表示時の週40時間制限表示更新
+        setTimeout(() => {
+            updateWeeklyCalculationDisplay();
+        }, 200);
+    }
+});
+
+function updateRowCalculation(row) {
+    // 入力値を取得
+    const startHour = parseInt(row.querySelector('[name^="start_hour_"]').value) || null;
+    const startMinute = parseInt(row.querySelector('[name^="start_minute_"]').value) || 0;
+    const endHour = parseInt(row.querySelector('[name^="end_hour_"]').value) || null;
+    const endMinute = parseInt(row.querySelector('[name^="end_minute_"]').value) || 0;
+    const breakTime = parseInt(row.querySelector('[name^="break_time_"]').value) || 0;
+    
+    // 表示用要素を取得
+    const dayNumber = parseInt(row.querySelector('td:first-child').textContent);
+    const regularCell = document.getElementById(`regular_${dayNumber}`);
+    const overtimeCell = document.getElementById(`overtime_${dayNumber}`);
+    const holidayCell = document.getElementById(`holiday_${dayNumber}`);
+    
+    // 有給・特休・欠勤・休業チェックボックス
+    const paidLeave = row.querySelector('[name^="paid_leave_"]').checked;
+    const specialLeave = row.querySelector('[name^="special_leave_"]').checked;
+    const absence = row.querySelector('[name^="absence_"]').checked;
+    const companyClosure = row.querySelector('[name^="company_closure_"]').checked;
+    
+    // 休暇・欠勤の場合は計算しない
+    if (paidLeave || specialLeave || absence || companyClosure) {
+        regularCell.innerHTML = '<small class="text-muted">-</small>';
+        overtimeCell.innerHTML = '<small class="text-muted">-</small>';
+        holidayCell.innerHTML = '<small class="text-muted">-</small>';
+        return;
+    }
+    
+    // 開始・終了時刻がない場合
+    if (startHour === null || endHour === null) {
+        regularCell.innerHTML = '<small class="text-muted">-</small>';
+        overtimeCell.innerHTML = '<small class="text-muted">-</small>';
+        holidayCell.innerHTML = '<small class="text-muted">-</small>';
+        return;
+    }
+    
+    // 時刻の妥当性チェック
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || 
+        startMinute < 0 || startMinute > 59 || endMinute < 0 || endMinute > 59) {
+        regularCell.innerHTML = '<small class="text-danger">エラー</small>';
+        overtimeCell.innerHTML = '<small class="text-danger">エラー</small>';
+        holidayCell.innerHTML = '<small class="text-danger">エラー</small>';
+        return;
+    }
+    
+    // 労働時間計算
+    let startTotalMinutes = startHour * 60 + startMinute;
+    let endTotalMinutes = endHour * 60 + endMinute;
+    
+    // 日をまたぐ場合の処理
+    if (endTotalMinutes <= startTotalMinutes) {
+        endTotalMinutes += 24 * 60; // 翌日
+    }
+    
+    const totalWorkMinutes = endTotalMinutes - startTotalMinutes - breakTime;
+    
+    if (totalWorkMinutes <= 0) {
+        regularCell.innerHTML = '<small class="text-muted">0:00</small>';
+        overtimeCell.innerHTML = '<small class="text-muted">0:00</small>';
+        holidayCell.innerHTML = '<small class="text-muted">0:00</small>';
+        return;
+    }
+    
+    // 曜日判定（0=月曜日, 6=日曜日）
+    const weekday = parseInt(row.getAttribute('data-weekday'));
+    
+    // 環境設定から法定休日を取得
+    const sundayLegalHoliday = {{ 'true' if holiday_settings and holiday_settings.sunday_legal_holiday else 'false' }};
+    const saturdayLegalHoliday = {{ 'true' if holiday_settings and holiday_settings.saturday_legal_holiday else 'false' }};
+    
+    const isSunday = (weekday === 6);
+    const isSaturday = (weekday === 5);
+    const isHoliday = row.classList.contains('table-secondary'); // 祝日判定
+    
+    // 法定休日の判定
+    // table-secondaryクラスは会社休日を示すが、法定休日かどうかは設定による
+    const isActualHoliday = isHoliday; // 祝日等の特別な日
+    const isLegalHoliday = (isSunday && sundayLegalHoliday) || 
+                          (isSaturday && saturdayLegalHoliday) || 
+                          (isActualHoliday && !isSaturday && !isSunday); // 祝日は土日以外の場合のみ法定休日扱い
+    
+    // 会社休日の判定（法定休日でない土曜日など）
+    const isCompanyHoliday = (isSaturday && !saturdayLegalHoliday);
+    
+    let regularMinutes = 0;
+    let overtimeMinutes = 0;
+    let holidayMinutes = 0;
+    
+    if (isLegalHoliday) {
+        // 法定休日労働（35%割増）- 全て法定休日労働時間として扱う
+        holidayMinutes = totalWorkMinutes;
+    } else {
+        // 平日・法定外休日の計算（週40時間制限優先）
+        // 初期表示では全て法定内労働時間として表示し、
+        // 後でupdateWeeklyCalculationDisplay()で週40時間制限による調整を実行
+        regularMinutes = totalWorkMinutes;
+        overtimeMinutes = 0;
+        
+        // 注意：週40時間制限による最終調整はupdateWeeklyCalculationDisplay()で実行
+    }
+    
+    // 時間:分形式で表示
+    function formatTime(minutes) {
+        if (minutes === 0) return '<small class="text-muted">0:00</small>';
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        return `<strong>${hours}:${mins.toString().padStart(2, '0')}</strong>`;
+    }
+    
+    regularCell.innerHTML = formatTime(regularMinutes);
+    overtimeCell.innerHTML = formatTime(overtimeMinutes);
+    holidayCell.innerHTML = formatTime(holidayMinutes);
+    
+    // 週40時間制限による調整表示を更新
+    updateWeeklyCalculationDisplay();
+}
+
+// 週40時間制限を考慮した表示更新（月曜日起算）
+function updateWeeklyCalculationDisplay() {
+    const allRows = document.querySelectorAll('tbody tr');
+    const weeklyData = [];
+    
+    // 各日のデータを収集
+    allRows.forEach(row => {
+        const dayNumber = parseInt(row.querySelector('td:first-child').textContent);
+        const weekday = parseInt(row.getAttribute('data-weekday'));
+        const regularCell = document.getElementById(`regular_${dayNumber}`);
+        const overtimeCell = document.getElementById(`overtime_${dayNumber}`);
+        const holidayCell = document.getElementById(`holiday_${dayNumber}`);
+        
+        // 現在の時間を分で取得
+        const getMinutesFromCell = (cell) => {
+            const text = cell.textContent.trim();
+            if (text === '-' || text === '0:00') return 0;
+            const match = text.match(/(\d+):(\d+)/);
+            if (match) {
+                return parseInt(match[1]) * 60 + parseInt(match[2]);
+            }
+            return 0;
+        };
+        
+        const regular = getMinutesFromCell(regularCell);
+        const overtime = getMinutesFromCell(overtimeCell);
+        const holiday = getMinutesFromCell(holidayCell);
+        
+        weeklyData.push({
+            day: dayNumber,
+            weekday: weekday,
+            regular: regular,
+            overtime: overtime,
+            holiday: holiday,
+            regularCell: regularCell,
+            overtimeCell: overtimeCell,
+            holidayCell: holidayCell
+        });
+    });
+    
+    // 月曜日起算で週をグループ化
+    const weekGroups = new Map();
+    
+    weeklyData.forEach(d => {
+        // 月曜日からの週番号を計算（月曜日 = weekday 0）
+        // 週の計算: 月曜日(0)→0, 火曜日(1)→1, ..., 日曜日(6)→6
+        const daysSinceMonday = d.weekday;  // 月曜日からの日数
+        const weekStart = d.day - daysSinceMonday;  // その週の月曜日の日付
+        
+        if (!weekGroups.has(weekStart)) {
+            weekGroups.set(weekStart, []);
+        }
+        weekGroups.get(weekStart).push(d);
+    });
+    
+    // 各週ごとに40時間制限を適用
+    weekGroups.forEach((weekData, weekStart) => {
+        // 平日・土曜日（法定外休日）を対象に週40時間制限を適用（法定休日除く）
+        const workdays = weekData.filter(d => {
+            // 法定休日労働時間がある場合は週40時間制限の対象外
+            const isLegalHoliday = d.holiday > 0;
+            return !isLegalHoliday && (d.regular > 0 || d.overtime > 0);
+        }).sort((a, b) => a.day - b.day); // 日付順にソート
+        
+        if (workdays.length === 0) return;
+        
+        // 週合計労働時間を計算
+        let totalWeeklyMinutes = 0;
+        const totalMinutesPerDay = [];
+        
+        workdays.forEach(d => {
+            const totalDay = d.regular + d.overtime;
+            totalWeeklyMinutes += totalDay;
+            totalMinutesPerDay.push(totalDay);
+        });
+        
+        const weeklyLimitMinutes = 40 * 60; // 2400分
+        
+        // 週40時間制限を適用して再配分
+        if (totalWeeklyMinutes > 0) {
+            // まず全ての労働時間をリセット
+            let remainingRegularMinutes = Math.min(totalWeeklyMinutes, weeklyLimitMinutes);
+            
+            // 日付順に法定内労働時間を割り当て（月曜日起算の週内で）
+            workdays.forEach((dayData, index) => {
+                const totalDayMinutes = totalMinutesPerDay[index];
+                
+                if (totalDayMinutes > 0) {
+                    // この日に割り当てる法定内労働時間
+                    const assignedRegular = Math.min(remainingRegularMinutes, totalDayMinutes);
+                    // 残りは法定外労働時間
+                    const assignedOvertime = totalDayMinutes - assignedRegular;
+                    
+                    // 表示を更新
+                    dayData.regularCell.innerHTML = formatTimeForDisplay(assignedRegular);
+                    dayData.overtimeCell.innerHTML = formatTimeForDisplay(assignedOvertime);
+                    
+                    remainingRegularMinutes -= assignedRegular;
+                }
+            });
+        }
+    });
+}
+
+// 表示用時間フォーマット関数
+function formatTimeForDisplay(minutes) {
+    if (minutes === 0) return '<small class="text-muted">0:00</small>';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `<strong>${hours}:${mins.toString().padStart(2, '0')}</strong>`;
+}
+
+// 一括設定機能
+function selectWeekdays() {
+    // 平日（月〜金）を選択（土日の選択は解除しない - 累積選択可能）
+    const weekdayIds = ['bulk-mon', 'bulk-tue', 'bulk-wed', 'bulk-thu', 'bulk-fri'];
+    weekdayIds.forEach(id => {
+        const checkbox = document.getElementById(id);
+        if (checkbox) checkbox.checked = true;
+    });
+}
+
+function selectWeekends() {
+    // 休日（土・日）を選択（平日の選択は解除しない - 累積選択可能）
+    const weekendIds = ['bulk-sat', 'bulk-sun'];
+    weekendIds.forEach(id => {
+        const checkbox = document.getElementById(id);
+        if (checkbox) checkbox.checked = true;
+    });
+}
+
+function applyBulkSettings() {
+    // 選択された曜日を取得
+    const selectedWeekdays = [];
+    const weekdayCheckboxes = ['bulk-mon', 'bulk-tue', 'bulk-wed', 'bulk-thu', 'bulk-fri', 'bulk-sat', 'bulk-sun'];
+    
+    weekdayCheckboxes.forEach(id => {
+        const checkbox = document.getElementById(id);
+        if (checkbox && checkbox.checked) {
+            selectedWeekdays.push(parseInt(checkbox.value));
+        }
+    });
+    
+    if (selectedWeekdays.length === 0) {
+        alert('対象の曜日を選択してください。');
+        return;
+    }
+    
+    // 設定値を取得
+    const startHour = document.getElementById('bulk-start-hour').value;
+    const startMinute = document.getElementById('bulk-start-minute').value;
+    const endHour = document.getElementById('bulk-end-hour').value;
+    const endMinute = document.getElementById('bulk-end-minute').value;
+    const breakTime = document.getElementById('bulk-break-time').value;
+    
+    // 入力値の検証
+    if (!startHour || !endHour) {
+        alert('始業時刻と終業時刻の時間を入力してください。');
+        return;
+    }
+    
+    let appliedCount = 0;
+    
+    // テーブルの各行をチェックして適用
+    const tableRows = document.querySelectorAll('tbody tr');
+    tableRows.forEach((row, index) => {
+        // data-weekday属性から曜日を取得（0=月曜日, 6=日曜日）
+        const currentWeekday = parseInt(row.getAttribute('data-weekday'));
+        
+        if (selectedWeekdays.includes(currentWeekday)) {
+            // 始業時刻を設定
+            const startHourInput = row.querySelector('[name^="start_hour_"]');
+            const startMinuteInput = row.querySelector('[name^="start_minute_"]');
+            if (startHourInput) startHourInput.value = startHour;
+            if (startMinuteInput) startMinuteInput.value = startMinute || '0';
+            
+            // 終業時刻を設定
+            const endHourInput = row.querySelector('[name^="end_hour_"]');
+            const endMinuteInput = row.querySelector('[name^="end_minute_"]');
+            if (endHourInput) endHourInput.value = endHour;
+            if (endMinuteInput) endMinuteInput.value = endMinute || '0';
+            
+            // 休憩時間を設定
+            const breakTimeInput = row.querySelector('[name^="break_time_"]');
+            if (breakTimeInput && breakTime) breakTimeInput.value = breakTime;
+            
+            appliedCount++;
+        }
+    });
+    
+    // 計算結果を更新
+    document.querySelectorAll('tbody tr').forEach(row => {
+        updateRowCalculation(row);
+    });
+    
+    // 週40時間制限の表示更新を再実行
+    setTimeout(() => {
+        updateWeeklyCalculationDisplay();
+    }, 100);
+    
+    if (appliedCount > 0) {
+        alert(`${appliedCount}日分の時刻を設定しました。`);
+    } else {
+        alert('該当する曜日の日付が見つかりませんでした。');
+    }
+}
+
+function clearBulkSettings() {
+    // 選択された曜日を取得
+    const selectedWeekdays = [];
+    const weekdayCheckboxes = ['bulk-mon', 'bulk-tue', 'bulk-wed', 'bulk-thu', 'bulk-fri', 'bulk-sat', 'bulk-sun'];
+    
+    weekdayCheckboxes.forEach(id => {
+        const checkbox = document.getElementById(id);
+        if (checkbox && checkbox.checked) {
+            selectedWeekdays.push(parseInt(checkbox.value));
+        }
+    });
+    
+    if (selectedWeekdays.length === 0) {
+        alert('クリア対象の曜日を選択してください。');
+        return;
+    }
+    
+    if (!confirm('選択した曜日の時刻をクリアします。よろしいですか？')) {
+        return;
+    }
+    
+    let clearedCount = 0;
+    
+    // テーブルの各行をチェックしてクリア
+    const tableRows = document.querySelectorAll('tbody tr');
+    tableRows.forEach((row, index) => {
+        // data-weekday属性から曜日を取得（0=月曜日, 6=日曜日）
+        const currentWeekday = parseInt(row.getAttribute('data-weekday'));
+        
+        if (selectedWeekdays.includes(currentWeekday)) {
+            // 時刻をクリア
+            const startHourInput = row.querySelector('[name^="start_hour_"]');
+            const startMinuteInput = row.querySelector('[name^="start_minute_"]');
+            const endHourInput = row.querySelector('[name^="end_hour_"]');
+            const endMinuteInput = row.querySelector('[name^="end_minute_"]');
+            const breakTimeInput = row.querySelector('[name^="break_time_"]');
+            
+            if (startHourInput) startHourInput.value = '';
+            if (startMinuteInput) startMinuteInput.value = '';
+            if (endHourInput) endHourInput.value = '';
+            if (endMinuteInput) endMinuteInput.value = '';
+            if (breakTimeInput) breakTimeInput.value = '0';
+            
+            clearedCount++;
+        }
+    });
+    
+    // 計算結果を更新
+    document.querySelectorAll('tbody tr').forEach(row => {
+        updateRowCalculation(row);
+    });
+    
+    // 週40時間制限の表示更新を再実行
+    setTimeout(() => {
+        updateWeeklyCalculationDisplay();
+    }, 100);
+    
+    if (clearedCount > 0) {
+        alert(`${clearedCount}日分の時刻をクリアしました。`);
+    } else {
+        alert('該当する曜日の日付が見つかりませんでした。');
+    }
+}
+</script>
+{% endblock %}

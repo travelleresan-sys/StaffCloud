@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}36協定一覧 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="bi bi-list-ul me-2"></i>36協定一覧
+                    </h1>
+                    <p class="text-muted mb-0">労働基準法第36条に基づく時間外・休日労働協定届の一覧</p>
+                </div>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('create_36agreement') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i>新規作成
+                    </a>
+                    <a href="{{ url_for('general_affairs_36agreement') }}" class="btn btn-outline-info">
+                        <i class="bi bi-gear me-1"></i>総務事務管理
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 36協定一覧 -->
+    <div class="row">
+        <div class="col-12">
+            {% if agreements %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-file-earmark-text me-2"></i>36協定一覧 ({{ agreements|length }}件)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>事業の名称</th>
+                                    <th>協定期間</th>
+                                    <th>締結日</th>
+                                    <th>時間外労働上限</th>
+                                    <th>状態</th>
+                                    <th>作成日</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for agreement in agreements %}
+                                <tr class="{% if agreement.is_active %}table-success{% endif %}">
+                                    <td>{{ agreement.id }}</td>
+                                    <td>
+                                        <strong>{{ agreement.business_name or '未設定' }}</strong>
+                                        {% if agreement.business_type %}
+                                        <br><small class="text-muted">{{ agreement.business_type }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ agreement.agreement_start_date }}<br>
+                                        <small class="text-muted">～ {{ agreement.agreement_end_date }}</small>
+                                    </td>
+                                    <td>{{ agreement.agreement_conclusion_date }}</td>
+                                    <td>
+                                        <strong>月間:</strong> {{ agreement.overtime_hours_monthly or 0 }}時間<br>
+                                        <strong>日間:</strong> {{ agreement.overtime_hours_daily or 0 }}時間
+                                    </td>
+                                    <td>
+                                        {% if agreement.status == 'draft' %}
+                                            <span class="badge bg-secondary">下書き</span>
+                                        {% elif agreement.status == 'submitted' %}
+                                            <span class="badge bg-primary">提出済み</span>
+                                        {% elif agreement.status == 'active' %}
+                                            <span class="badge bg-success">有効</span>
+                                        {% elif agreement.status == 'expired' %}
+                                            <span class="badge bg-warning">期限切れ</span>
+                                        {% elif agreement.status == 'superseded' %}
+                                            <span class="badge bg-secondary">更新済み</span>
+                                        {% endif %}
+                                        {% if agreement.is_active %}
+                                        <br><small class="text-success">現在有効</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ agreement.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('view_36agreement', id=agreement.id) }}" 
+                                               class="btn btn-outline-info" title="詳細表示">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-file-earmark-plus text-muted" style="font-size: 4rem;"></i>
+                    <h4 class="text-muted mt-3">36協定がまだ作成されていません</h4>
+                    <p class="text-muted">労働基準法第36条に基づく時間外・休日労働協定届を作成してください。</p>
+                    <a href="{{ url_for('create_36agreement') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-2"></i>新規36協定を作成
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 説明カード -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-info">
+                <div class="card-header bg-info bg-opacity-10">
+                    <h6 class="card-title mb-0 text-info">
+                        <i class="bi bi-info-circle me-2"></i>36協定について
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li><strong>36協定とは:</strong> 労働基準法第36条に基づき、法定労働時間（1日8時間、週40時間）を超えて働かせる場合や、法定休日に働かせる場合に必要な労使協定です。</li>
+                        <li><strong>有効期間:</strong> 原則として1年間有効です。期限切れ前に更新が必要です。</li>
+                        <li><strong>上限時間:</strong> 時間外労働には厳格な上限があります。原則として月45時間・年360時間以内です。</li>
+                        <li><strong>提出義務:</strong> 協定を締結した場合は、労働基準監督署へ届け出る必要があります。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

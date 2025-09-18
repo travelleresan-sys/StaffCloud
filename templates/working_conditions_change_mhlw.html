@@ -1,0 +1,896 @@
+{% extends "base.html" %}
+
+{% block title %}労働条件変更通知書作成 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1 class="h2 mb-2">
+                        <i class="bi bi-arrow-repeat me-2"></i>労働条件変更通知書作成
+                    </h1>
+                    <p class="text-muted mb-0">従業員の労働条件変更通知書を作成します（厚生労働省モデル完全準拠）</p>
+                </div>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('company_submissions') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 労働条件変更通知書作成フォーム -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-file-earmark-arrow-up me-2"></i>労働条件変更通知書作成
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('create_working_conditions_change') }}">
+                        <!-- 従業員選択 -->
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="use_existing_employee" onchange="toggleEmployeeInput()">
+                                    <label class="form-check-label" for="use_existing_employee">
+                                        既存従業員から選択する
+                                    </label>
+                                </div>
+                                <select class="form-select" id="employee_id" name="employee_id" disabled onchange="loadEmployeeData(this.value)">
+                                    <option value="">従業員を選択してください</option>
+                                    {% for employee in employees %}
+                                        <option value="{{ employee.id }}" 
+                                                data-name="{{ employee.name }}"
+                                                data-position="{{ employee.position or '' }}"
+                                                data-department="{{ employee.department or '' }}"
+                                                data-salary="{{ employee.base_salary or '' }}">
+                                            {{ employee.name }} ({{ employee.id }})
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <!-- 従業員名（手入力） -->
+                            <div class="col-12 col-md-6 mb-3">
+                                <label for="employee_name" class="form-label">従業員名 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="employee_name" name="employee_name" required>
+                            </div>
+                        </div>
+
+                        <!-- 変更基本情報 -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h6 class="text-primary mb-3">
+                                    <i class="bi bi-calendar-event me-2"></i>変更基本情報
+                                </h6>
+                            </div>
+                            <div class="col-12 col-md-6 mb-3">
+                                <label for="change_date" class="form-label">変更実施日 <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="change_date" name="change_date" required>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label for="change_reason" class="form-label">変更理由 <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="change_reason" name="change_reason" rows="2" required
+                                          placeholder="例：組織改編、昇進・昇格、業務拡大等"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- 変更項目（厚労省完全準拠） -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h6 class="text-warning mb-3">
+                                    <i class="bi bi-arrow-left-right me-2"></i>労働条件変更項目（厚労省モデル準拠）
+                                </h6>
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    各項目について「変更あり」または「変更なし」を選択してください。
+                                </div>
+                            </div>
+
+                            <!-- 1. 労働契約の期間 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-primary">
+                                    <div class="card-header bg-primary bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-primary">1. 労働契約の期間</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_contract_period" id="change_contract_period" value="change" onchange="toggleChangeFields('contract_period', 'change')">
+                                                <label class="btn btn-outline-primary" for="change_contract_period">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_contract_period" id="no_change_contract_period" value="no_change" onchange="toggleChangeFields('contract_period', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_contract_period">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_contract_period" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="radio" name="old_contract_period_type" id="old_indefinite" value="期間の定めなし">
+                                                        <label class="form-check-label" for="old_indefinite">期間の定めなし</label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="radio" name="old_contract_period_type" id="old_fixed" value="期間の定めあり" onchange="toggleContractDates('old', true)">
+                                                        <label class="form-check-label" for="old_fixed">期間の定めあり</label>
+                                                    </div>
+                                                </div>
+                                                <div id="old_contract_dates" style="display: none;">
+                                                    <div class="row">
+                                                        <div class="col-6">
+                                                            <label class="form-label small">開始日</label>
+                                                            <input type="date" class="form-control form-control-sm" name="old_contract_start_date">
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <label class="form-label small">終了日</label>
+                                                            <input type="date" class="form-control form-control-sm" name="old_contract_end_date">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="radio" name="new_contract_period_type" id="new_indefinite" value="期間の定めなし">
+                                                        <label class="form-check-label" for="new_indefinite">期間の定めなし</label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="radio" name="new_contract_period_type" id="new_fixed" value="期間の定めあり" onchange="toggleContractDates('new', true)">
+                                                        <label class="form-check-label" for="new_fixed">期間の定めあり</label>
+                                                    </div>
+                                                </div>
+                                                <div id="new_contract_dates" style="display: none;">
+                                                    <div class="row">
+                                                        <div class="col-6">
+                                                            <label class="form-label small">開始日</label>
+                                                            <input type="date" class="form-control form-control-sm" name="new_contract_start_date">
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <label class="form-label small">終了日</label>
+                                                            <input type="date" class="form-control form-control-sm" name="new_contract_end_date">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div id="current_fields_contract_period" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の労働契約期間</strong></label>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="radio" name="current_contract_period_type" id="current_indefinite" value="期間の定めなし">
+                                                        <label class="form-check-label" for="current_indefinite">期間の定めなし</label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="radio" name="current_contract_period_type" id="current_fixed" value="期間の定めあり" onchange="toggleContractDates('current', true)">
+                                                        <label class="form-check-label" for="current_fixed">期間の定めあり</label>
+                                                    </div>
+                                                </div>
+                                                <div id="current_contract_dates" style="display: none;">
+                                                    <div class="row">
+                                                        <div class="col-6">
+                                                            <label class="form-label small">開始日</label>
+                                                            <input type="date" class="form-control form-control-sm" name="current_contract_start_date">
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <label class="form-label small">終了日</label>
+                                                            <input type="date" class="form-control form-control-sm" name="current_contract_end_date">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 1-1. 契約の更新の有無（期間の定めありの場合のみ） -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-info">
+                                    <div class="card-header bg-info bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-info">1-1. 契約の更新の有無</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_contract_renewal" id="change_contract_renewal" value="change" onchange="toggleChangeFields('contract_renewal', 'change')">
+                                                <label class="btn btn-outline-primary" for="change_contract_renewal">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_contract_renewal" id="no_change_contract_renewal" value="no_change" onchange="toggleChangeFields('contract_renewal', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_contract_renewal">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="alert alert-info small">
+                                            <i class="bi bi-info-circle me-1"></i>※ 「契約期間」について「期間の定めあり」とした場合に記入
+                                        </div>
+                                        <div id="change_fields_contract_renewal" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <select class="form-select" name="old_contract_renewal">
+                                                    <option value="">選択してください</option>
+                                                    <option value="自動的に更新する">自動的に更新する</option>
+                                                    <option value="更新する場合があり得る">更新する場合があり得る</option>
+                                                    <option value="契約の更新はしない">契約の更新はしない</option>
+                                                    <option value="その他">その他</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <select class="form-select" name="new_contract_renewal">
+                                                    <option value="">選択してください</option>
+                                                    <option value="自動的に更新する">自動的に更新する</option>
+                                                    <option value="更新する場合があり得る">更新する場合があり得る</option>
+                                                    <option value="契約の更新はしない">契約の更新はしない</option>
+                                                    <option value="その他">その他</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div id="current_fields_contract_renewal" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の契約更新の有無</strong></label>
+                                                <select class="form-select" name="current_contract_renewal">
+                                                    <option value="">選択してください</option>
+                                                    <option value="自動的に更新する">自動的に更新する</option>
+                                                    <option value="更新する場合があり得る">更新する場合があり得る</option>
+                                                    <option value="契約の更新はしない">契約の更新はしない</option>
+                                                    <option value="その他">その他</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. 就業の場所 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-success">
+                                    <div class="card-header bg-success bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-success">2. 就業の場所</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_workplace" id="change_workplace" value="change" onchange="toggleChangeFields('workplace', 'change')">
+                                                <label class="btn btn-outline-primary" for="change_workplace">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_workplace" id="no_change_workplace" value="no_change" onchange="toggleChangeFields('workplace', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_workplace">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_workplace" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label for="old_workplace" class="form-label">変更前</label>
+                                                <textarea class="form-control" id="old_workplace" name="old_workplace" rows="2" placeholder="例：東京都渋谷区テスト町1-2-3"></textarea>
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label for="new_workplace" class="form-label">変更後</label>
+                                                <textarea class="form-control" id="new_workplace" name="new_workplace" rows="2" placeholder="例：大阪府大阪市北区テスト町2-3-4"></textarea>
+                                            </div>
+                                        </div>
+                                        <div id="current_fields_workplace" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label for="current_workplace" class="form-label">現在の就業の場所</label>
+                                                <textarea class="form-control" id="current_workplace" name="current_workplace" rows="2" placeholder="例：東京都渋谷区テスト町1-2-3"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 3. 従事すべき業務 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-warning">
+                                    <div class="card-header bg-warning bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-warning">3. 従事すべき業務</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_job_duties" id="change_job_duties" value="change" onchange="toggleChangeFields('job_duties', 'change')">
+                                                <label class="btn btn-outline-warning" for="change_job_duties">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_job_duties" id="no_change_job_duties" value="no_change" onchange="toggleChangeFields('job_duties', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_job_duties">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_job_duties" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <textarea class="form-control" name="old_job_duties" rows="3"></textarea>
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <textarea class="form-control" name="new_job_duties" rows="3"></textarea>
+                                            </div>
+                                        </div>
+                                        <div id="no_change_fields_job_duties" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の業務内容</strong></label>
+                                                <textarea class="form-control" name="current_job_duties" rows="3"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 4. 始業、終業時間 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-info">
+                                    <div class="card-header bg-info bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-info">4. 始業、終業時間</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_work_hours" id="change_work_hours" value="change" onchange="toggleChangeFields('work_hours', 'change')">
+                                                <label class="btn btn-outline-info" for="change_work_hours">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_work_hours" id="no_change_work_hours" value="no_change" onchange="toggleChangeFields('work_hours', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_work_hours">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_work_hours" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <input type="text" class="form-control" name="old_work_hours" placeholder="例：09:00-18:00">
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <input type="text" class="form-control" name="new_work_hours" placeholder="例：09:00-18:00">
+                                            </div>
+                                        </div>
+                                        <div id="no_change_fields_work_hours" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の勤務時間</strong></label>
+                                                <input type="text" class="form-control" name="current_work_hours" placeholder="例：09:00-18:00">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 5. 休憩時間 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-secondary">
+                                    <div class="card-header bg-secondary bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-secondary">5. 休憩時間</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_break_time" id="change_break_time" value="change" onchange="toggleChangeFields('break_time', 'change')">
+                                                <label class="btn btn-outline-secondary" for="change_break_time">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_break_time" id="no_change_break_time" value="no_change" onchange="toggleChangeFields('break_time', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_break_time">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_break_time" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <input type="text" class="form-control" name="old_break_time" placeholder="例：12:00-13:00（60分）">
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <input type="text" class="form-control" name="new_break_time" placeholder="例：12:00-13:00（60分）">
+                                            </div>
+                                        </div>
+                                        <div id="no_change_fields_break_time" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の休憩時間</strong></label>
+                                                <input type="text" class="form-control" name="current_break_time" placeholder="例：12:00-13:00（60分）">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 6. 所定時間外労働の有無 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-danger">
+                                    <div class="card-header bg-danger bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-danger">6. 所定時間外労働の有無</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_overtime" id="change_overtime" value="change" onchange="toggleChangeFields('overtime', 'change')">
+                                                <label class="btn btn-outline-danger" for="change_overtime">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_overtime" id="no_change_overtime" value="no_change" onchange="toggleChangeFields('overtime', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_overtime">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_overtime" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <select class="form-select" name="old_overtime">
+                                                    <option value="">選択してください</option>
+                                                    <option value="有（36協定の範囲内）">有（36協定の範囲内）</option>
+                                                    <option value="無">無</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <select class="form-select" name="new_overtime">
+                                                    <option value="">選択してください</option>
+                                                    <option value="有（36協定の範囲内）">有（36協定の範囲内）</option>
+                                                    <option value="無">無</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div id="no_change_fields_overtime" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の時間外労働</strong></label>
+                                                <select class="form-select" name="current_overtime">
+                                                    <option value="">選択してください</option>
+                                                    <option value="有（36協定の範囲内）">有（36協定の範囲内）</option>
+                                                    <option value="無">無</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 7. 休日 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-primary">
+                                    <div class="card-header bg-primary bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-primary">7. 休日</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_holidays" id="change_holidays" value="change" onchange="toggleChangeFields('holidays', 'change')">
+                                                <label class="btn btn-outline-primary" for="change_holidays">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_holidays" id="no_change_holidays" value="no_change" onchange="toggleChangeFields('holidays', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_holidays">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_holidays" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <textarea class="form-control" name="old_holidays" rows="3" placeholder="例：毎週土・日曜日、祝祭日、GW、夏季休暇、年末年始"></textarea>
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <textarea class="form-control" name="new_holidays" rows="3" placeholder="例：毎週土・日曜日、祝祭日、GW、夏季休暇、年末年始"></textarea>
+                                            </div>
+                                        </div>
+                                        <div id="no_change_fields_holidays" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の休日</strong></label>
+                                                <textarea class="form-control" name="current_holidays" rows="3" placeholder="例：毎週土・日曜日、祝祭日、GW、夏季休暇、年末年始"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 8. 休暇 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-success">
+                                    <div class="card-header bg-success bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-success">8. 休暇</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_vacation" id="change_vacation" value="change" onchange="toggleChangeFields('vacation', 'change')">
+                                                <label class="btn btn-outline-success" for="change_vacation">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_vacation" id="no_change_vacation" value="no_change" onchange="toggleChangeFields('vacation', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_vacation">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_vacation" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <textarea class="form-control" name="old_vacation" rows="2" placeholder="例：年次有給休暇（入社6カ月後から付与）"></textarea>
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <textarea class="form-control" name="new_vacation" rows="2" placeholder="例：年次有給休暇（入社6カ月後から付与）"></textarea>
+                                            </div>
+                                        </div>
+                                        <div id="no_change_fields_vacation" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の休暇制度</strong></label>
+                                                <textarea class="form-control" name="current_vacation" rows="2" placeholder="例：年次有給休暇（入社6カ月後から付与）"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 9. 賃金 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-warning">
+                                    <div class="card-header bg-warning bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-warning">9. 賃金</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_base_salary" id="change_base_salary" value="change" onchange="toggleChangeFields('base_salary', 'change')">
+                                                <label class="btn btn-outline-warning" for="change_base_salary">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_base_salary" id="no_change_base_salary" value="no_change" onchange="toggleChangeFields('base_salary', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_base_salary">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_base_salary" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前基本給</strong></label>
+                                                <input type="number" class="form-control" name="old_base_salary" placeholder="円">
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後基本給</strong></label>
+                                                <input type="number" class="form-control" name="new_base_salary" placeholder="円">
+                                            </div>
+                                        </div>
+                                        <div id="no_change_fields_base_salary" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の基本給</strong></label>
+                                                <input type="number" class="form-control" name="current_base_salary" placeholder="円">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 10. 諸手当 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-info">
+                                    <div class="card-header bg-info bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-info">10. 諸手当</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_allowances" id="change_allowances" value="change" onchange="toggleChangeFields('allowances', 'change')">
+                                                <label class="btn btn-outline-info" for="change_allowances">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_allowances" id="no_change_allowances" value="no_change" onchange="toggleChangeFields('allowances', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_allowances">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_allowances" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <textarea class="form-control" name="old_allowances" rows="3" placeholder="例：通勤手当、住宅手当、役職手当"></textarea>
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <textarea class="form-control" name="new_allowances" rows="3" placeholder="例：通勤手当、住宅手当、役職手当"></textarea>
+                                            </div>
+                                        </div>
+                                        <div id="no_change_fields_allowances" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の諸手当</strong></label>
+                                                <textarea class="form-control" name="current_allowances" rows="3" placeholder="例：通勤手当、住宅手当、役職手当"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 11. 賃金締切日、支払日 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-danger">
+                                    <div class="card-header bg-danger bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-danger">11. 賃金締切日、支払日</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_payment_terms" id="change_payment_terms" value="change" onchange="toggleChangeFields('payment_terms', 'change')">
+                                                <label class="btn btn-outline-danger" for="change_payment_terms">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_payment_terms" id="no_change_payment_terms" value="no_change" onchange="toggleChangeFields('payment_terms', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_payment_terms">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_payment_terms" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <textarea class="form-control" name="old_payment_terms" rows="2" placeholder="例：毎月末日締切、翌月25日支払"></textarea>
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <textarea class="form-control" name="new_payment_terms" rows="2" placeholder="例：毎月末日締切、翌月25日支払"></textarea>
+                                            </div>
+                                        </div>
+                                        <div id="no_change_fields_payment_terms" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の締切・支払日</strong></label>
+                                                <textarea class="form-control" name="current_payment_terms" rows="2" placeholder="例：毎月末日締切、翌月25日支払"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 12. 賃金支払方法 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-warning">
+                                    <div class="card-header bg-warning bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-warning">12. 賃金支払方法</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_payment_method" id="change_payment_method" value="change" onchange="toggleChangeFields('payment_method', 'change')">
+                                                <label class="btn btn-outline-warning" for="change_payment_method">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_payment_method" id="no_change_payment_method" value="no_change" onchange="toggleChangeFields('payment_method', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_payment_method">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_payment_method" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <select class="form-select" name="old_payment_method">
+                                                    <option value="">選択してください</option>
+                                                    <option value="銀行振込">銀行振込</option>
+                                                    <option value="現金支給">現金支給</option>
+                                                    <option value="その他">その他</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <select class="form-select" name="new_payment_method">
+                                                    <option value="">選択してください</option>
+                                                    <option value="銀行振込">銀行振込</option>
+                                                    <option value="現金支給">現金支給</option>
+                                                    <option value="その他">その他</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div id="no_change_fields_payment_method" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の支払方法</strong></label>
+                                                <select class="form-select" name="current_payment_method">
+                                                    <option value="">選択してください</option>
+                                                    <option value="銀行振込">銀行振込</option>
+                                                    <option value="現金支給">現金支給</option>
+                                                    <option value="その他">その他</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 13. 退職に関する事項 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-secondary">
+                                    <div class="card-header bg-secondary bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-secondary">13. 退職に関する事項</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_retirement" id="change_retirement" value="change" onchange="toggleChangeFields('retirement', 'change')">
+                                                <label class="btn btn-outline-secondary" for="change_retirement">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_retirement" id="no_change_retirement" value="no_change" onchange="toggleChangeFields('retirement', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_retirement">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_retirement" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <textarea class="form-control" name="old_retirement" rows="3" placeholder="例：定年60歳、継続雇用制度有、自己都合退職は30日前に届出"></textarea>
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <textarea class="form-control" name="new_retirement" rows="3" placeholder="例：定年60歳、継続雇用制度有、自己都合退職は30日前に届出"></textarea>
+                                            </div>
+                                        </div>
+                                        <div id="no_change_fields_retirement" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の退職規定</strong></label>
+                                                <textarea class="form-control" name="current_retirement" rows="3" placeholder="例：定年60歳、継続雇用制度有、自己都合退職は30日前に届出"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 13. 解雇の事由及び手続 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-dark">
+                                    <div class="card-header bg-dark bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-dark">14. 解雇の事由及び手続</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_dismissal" id="change_dismissal" value="change" onchange="toggleChangeFields('dismissal', 'change')">
+                                                <label class="btn btn-outline-dark" for="change_dismissal">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_dismissal" id="no_change_dismissal" value="no_change" onchange="toggleChangeFields('dismissal', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_dismissal">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_dismissal" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <textarea class="form-control" name="old_dismissal" rows="3" placeholder="例：就業規則違反など、就業規則に準ずる"></textarea>
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <textarea class="form-control" name="new_dismissal" rows="3" placeholder="例：就業規則違反など、就業規則に準ずる"></textarea>
+                                            </div>
+                                        </div>
+                                        <div id="no_change_fields_dismissal" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の解雇規定</strong></label>
+                                                <textarea class="form-control" name="current_dismissal" rows="3" placeholder="例：就業規則違反など、就業規則に準ずる"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 14. 社会保険加入状況 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-primary">
+                                    <div class="card-header bg-primary bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-primary">15. 社会保険加入状況</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_social_insurance" id="change_social_insurance" value="change" onchange="toggleChangeFields('social_insurance', 'change')">
+                                                <label class="btn btn-outline-primary" for="change_social_insurance">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_social_insurance" id="no_change_social_insurance" value="no_change" onchange="toggleChangeFields('social_insurance', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_social_insurance">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_social_insurance" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <textarea class="form-control" name="old_social_insurance" rows="2" placeholder="例：厚生年金、健康保険、その他"></textarea>
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <textarea class="form-control" name="new_social_insurance" rows="2" placeholder="例：厚生年金、健康保険、その他"></textarea>
+                                            </div>
+                                        </div>
+                                        <div id="no_change_fields_social_insurance" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の社会保険</strong></label>
+                                                <textarea class="form-control" name="current_social_insurance" rows="2" placeholder="例：厚生年金、健康保険、その他"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 15. 雇用保険の適用 -->
+                            <div class="col-12 mb-4">
+                                <div class="card border-success">
+                                    <div class="card-header bg-success bg-opacity-10">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0 text-success">16. 雇用保険の適用</h6>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check" name="change_type_employment_insurance" id="change_employment_insurance" value="change" onchange="toggleChangeFields('employment_insurance', 'change')">
+                                                <label class="btn btn-outline-success" for="change_employment_insurance">変更あり</label>
+                                                <input type="radio" class="btn-check" name="change_type_employment_insurance" id="no_change_employment_insurance" value="no_change" onchange="toggleChangeFields('employment_insurance', 'no_change')">
+                                                <label class="btn btn-outline-secondary" for="no_change_employment_insurance">変更なし</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="change_fields_employment_insurance" class="row" style="display: none;">
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更前</strong></label>
+                                                <select class="form-select" name="old_employment_insurance">
+                                                    <option value="">選択してください</option>
+                                                    <option value="適用あり">適用あり</option>
+                                                    <option value="適用なし">適用なし</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-12 col-md-6 mb-3">
+                                                <label class="form-label"><strong>変更後</strong></label>
+                                                <select class="form-select" name="new_employment_insurance">
+                                                    <option value="">選択してください</option>
+                                                    <option value="適用あり">適用あり</option>
+                                                    <option value="適用なし">適用なし</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div id="no_change_fields_employment_insurance" class="row" style="display: none;">
+                                            <div class="col-12 mb-3">
+                                                <label class="form-label"><strong>現在の雇用保険</strong></label>
+                                                <select class="form-select" name="current_employment_insurance">
+                                                    <option value="">選択してください</option>
+                                                    <option value="適用あり">適用あり</option>
+                                                    <option value="適用なし">適用なし</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- アクションボタン -->
+                        <div class="text-end mt-4">
+                            <button type="button" class="btn btn-secondary me-2" onclick="window.history.back()">
+                                <i class="bi bi-x-circle me-1"></i>キャンセル
+                            </button>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-file-earmark-arrow-up me-1"></i>労働条件変更通知書作成
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleEmployeeInput() {
+    const checkbox = document.getElementById('use_existing_employee');
+    const select = document.getElementById('employee_id');
+    const nameField = document.getElementById('employee_name');
+    
+    if (checkbox.checked) {
+        select.disabled = false;
+        nameField.readOnly = true;
+    } else {
+        select.disabled = true;
+        select.value = '';
+        nameField.readOnly = false;
+        clearEmployeeFields();
+    }
+}
+
+function loadEmployeeData(employeeId) {
+    const select = document.getElementById('employee_id');
+    const option = select.querySelector(`option[value="${employeeId}"]`);
+    
+    if (option && document.getElementById('use_existing_employee').checked) {
+        document.getElementById('employee_name').value = option.dataset.name || '';
+        document.getElementById('current_position').value = option.dataset.position || '';
+        document.getElementById('current_department').value = option.dataset.department || '';
+        document.getElementById('current_base_salary').value = option.dataset.salary || '';
+    }
+}
+
+function clearEmployeeFields() {
+    document.getElementById('employee_name').value = '';
+}
+
+function toggleChangeFields(fieldName, changeType) {
+    const changeFields = document.getElementById(`change_fields_${fieldName}`);
+    const currentFields = document.getElementById(`current_fields_${fieldName}`);
+    
+    if (changeType === 'change') {
+        if (changeFields) changeFields.style.display = 'block';
+        if (currentFields) currentFields.style.display = 'none';
+    } else if (changeType === 'no_change') {
+        if (changeFields) changeFields.style.display = 'none';
+        if (currentFields) currentFields.style.display = 'block';
+    }
+}
+
+function toggleContractDates(prefix, show) {
+    const datesDiv = document.getElementById(`${prefix}_contract_dates`);
+    if (datesDiv) {
+        datesDiv.style.display = show ? 'block' : 'none';
+    }
+}
+
+// ラジオボタンの変更を監視
+document.addEventListener('DOMContentLoaded', function() {
+    // 期間の定めなしが選択された場合は日付を隠す
+    document.querySelectorAll('input[name*="contract_period_type"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const prefix = this.name.replace('_contract_period_type', '');
+            const isFixed = this.value === '期間の定めあり';
+            toggleContractDates(prefix, isFixed);
+        });
+    });
+});
+</script>
+{% endblock %}
