@@ -3,45 +3,184 @@
 {% block title %}ログイン - StaffCloud{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-4">
-        <div class="card shadow">
-            <div class="card-header text-center bg-primary text-white">
-                <h3 class="card-title mb-0">
-                    <i class="bi bi-shield-lock me-2"></i>ログイン
-                </h3>
-            </div>
-            <div class="card-body p-4">
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="email" class="form-label">メールアドレス</label>
-                        <div class="input-group">
-                            <span class="input-group-text">
-                                <i class="bi bi-envelope"></i>
-                            </span>
-                            <input type="email" class="form-control" id="email" name="email" required>
-                        </div>
-                    </div>
-                    <div class="mb-4">
-                        <label for="password" class="form-label">パスワード</label>
-                        <div class="input-group">
-                            <span class="input-group-text">
-                                <i class="bi bi-key"></i>
-                            </span>
-                            <input type="password" class="form-control" id="password" name="password" required>
-                        </div>
-                    </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="bi bi-box-arrow-in-right me-2"></i>Login
-                        </button>
-                    </div>
-                </form>
-            </div>
-            <div class="card-footer text-center text-muted">
-                <small>StaffCloudにアクセスするにはログインが必要です</small>
+<div class="login-page">
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="text-center">
+                <i class="bi bi-cloud-fill display-1 text-primary mb-3"></i>
+                <h1 class="h2 mb-2">StaffCloud</h1>
+                <p class="lead text-muted">統合人事管理システム</p>
             </div>
         </div>
     </div>
+
+    <!-- ログイン方式選択カード -->
+    <div class="row mb-4 g-4">
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center d-flex flex-column">
+                    <i class="bi bi-person-workspace display-4 text-success mb-3"></i>
+                    <h5 class="card-title">従業員ログイン</h5>
+                    <p class="card-text text-muted flex-grow-1">氏名と従業員IDでログイン</p>
+                    <a href="{{ url_for('employee_login') }}" class="btn btn-success btn-lg w-100 mt-auto">
+                        <i class="bi bi-person me-2"></i>ログイン
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center d-flex flex-column">
+                    <i class="bi bi-shield-check display-4 text-primary mb-3"></i>
+                    <h5 class="card-title">管理者ログイン</h5>
+                    <p class="card-text text-muted flex-grow-1">従業員管理・申請承認</p>
+                    <a href="{{ url_for('admin_login') }}" class="btn btn-primary btn-lg w-100 mt-auto">
+                        <i class="bi bi-shield-check me-2"></i>ログイン
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center d-flex flex-column">
+                    <i class="bi bi-calculator display-4 text-info mb-3"></i>
+                    <h5 class="card-title">経理ログイン</h5>
+                    <p class="card-text text-muted flex-grow-1">給与計算・財務管理</p>
+                    <a href="{{ url_for('accounting_login') }}" class="btn btn-info btn-lg w-100 mt-auto">
+                        <i class="bi bi-calculator me-2"></i>ログイン
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center d-flex flex-column">
+                    <i class="bi bi-gear display-4 text-warning mb-3"></i>
+                    <h5 class="card-title">システム管理</h5>
+                    <p class="card-text text-muted flex-grow-1">システム設定・保守</p>
+                    <a href="{{ url_for('system_admin_login') }}" class="btn btn-warning btn-lg w-100 mt-auto">
+                        <i class="bi bi-gear me-2"></i>ログイン
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 統合ログインフォーム -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body p-4">
+                    <!-- ヘッダーとフォームを横並びに配置 -->
+                    <div class="d-flex align-items-center gap-4" style="flex-direction: row; flex-wrap: wrap;"">
+                        <!-- ヘッダー部分 -->
+                        <div class="flex-shrink-0">
+                            <h5 class="mb-2">
+                                <i class="bi bi-shield-lock me-2"></i>ログイン方法を選択してください
+                            </h5>
+                            <small class="text-muted">役割別ログインまたは統合ログイン</small>
+                        </div>
+
+                        <!-- エラーメッセージ -->
+                        {% with messages = get_flashed_messages() %}
+                            {% if messages %}
+                                <div class="flex-fill">
+                                    {% for message in messages %}
+                                        <div class="alert alert-danger alert-dismissible fade show mb-0" role="alert">
+                                            <i class="bi bi-exclamation-triangle me-2"></i>{{ message }}
+                                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        {% endwith %}
+
+                        <!-- ログインフォーム -->
+                        <div class="flex-fill">
+                            <form method="POST">
+                                <div class="d-flex gap-3 align-items-end" style="flex-direction: row; flex-wrap: wrap;"">
+                                    <div class="flex-fill">
+                                        <label for="email" class="form-label small">
+                                            <i class="bi bi-envelope me-1"></i>メールアドレス
+                                        </label>
+                                        <input type="email" class="form-control"
+                                               id="email" name="email"
+                                               placeholder="admin@example.com" required>
+                                    </div>
+
+                                    <div class="flex-fill">
+                                        <label for="password" class="form-label small">
+                                            <i class="bi bi-lock me-1"></i>パスワード
+                                        </label>
+                                        <input type="password" class="form-control"
+                                               id="password" name="password"
+                                               placeholder="パスワードを入力" required>
+                                    </div>
+
+                                    <div class="flex-shrink-0">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-box-arrow-in-right me-1"></i>ログイン
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- システム情報 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-square me-2"></i>システム機能
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-lg-4 col-md-6 col-sm-12">
+                            <div class="card h-100 border-success">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-people display-1 text-success mb-3"></i>
+                                    <h4 class="card-title">人事管理</h4>
+                                    <p class="card-text">従業員情報管理、勤怠管理、人事評価システム</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-4 col-md-6 col-sm-12">
+                            <div class="card h-100 border-info">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-currency-yen display-1 text-info mb-3"></i>
+                                    <h4 class="card-title">給与・会計</h4>
+                                    <p class="card-text">給与計算、財務諸表作成、会計処理システム</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-4 col-md-12 col-sm-12">
+                            <div class="card h-100 border-warning">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-calendar-check display-1 text-warning mb-3"></i>
+                                    <h4 class="card-title">勤怠・スケジュール</h4>
+                                    <p class="card-text">勤怠管理、休暇申請、カレンダー管理システム</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </div>
 {% endblock %}
