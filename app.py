@@ -4926,10 +4926,35 @@ def create_payroll_slip(employee_id, year, month):
             slip.other_deductions_detail = other_deductions
             
             # 総控除額・手取額
-            slip.total_deduction = (slip.health_insurance + slip.pension_insurance + slip.employment_insurance + 
-                                  slip.long_term_care_insurance + slip.income_tax + slip.resident_tax + 
+            slip.total_deduction = (slip.health_insurance + slip.pension_insurance + slip.employment_insurance +
+                                  slip.long_term_care_insurance + slip.income_tax + slip.resident_tax +
                                   slip.union_fee + slip.parking_fee + slip.uniform_fee + slip.other_deduction)
             slip.net_salary = slip.gross_salary - slip.total_deduction
+
+            # ===== データ整合性検証 =====
+            # 基本給与の整合性チェック
+            calc_overtime_allowance = payroll_calculation.overtime_allowance or 0
+            if abs(slip.overtime_allowance - calc_overtime_allowance) > 0:
+                print(f"[WARNING] 時間外手当の差異: 明細書={slip.overtime_allowance}, 計算結果={calc_overtime_allowance}")
+
+            calc_night_allowance = payroll_calculation.night_allowance or 0
+            if abs(slip.night_allowance - calc_night_allowance) > 0:
+                print(f"[WARNING] 深夜手当の差異: 明細書={slip.night_allowance}, 計算結果={calc_night_allowance}")
+
+            # 基本給が変更されていた場合のログ
+            if slip.base_salary != payroll_calculation.base_salary:
+                print(f"[INFO] 基本給修正: 計算結果={payroll_calculation.base_salary} → 明細書={slip.base_salary}")
+
+            # 総支給額の再計算検証
+            calc_gross_salary = (slip.base_salary + slip.overtime_allowance + slip.holiday_allowance +
+                               slip.night_allowance + slip.position_allowance + slip.family_allowance +
+                               slip.transportation_allowance + slip.housing_allowance + slip.meal_allowance +
+                               slip.skill_allowance + temporary_closure_compensation + salary_payment +
+                               bonus_payment + slip.other_allowance)
+            if slip.gross_salary != calc_gross_salary:
+                print(f"[ERROR] 総支給額計算不整合: 保存値={slip.gross_salary}, 再計算値={calc_gross_salary}")
+                slip.gross_salary = calc_gross_salary  # 正しい値で上書き
+                slip.net_salary = slip.gross_salary - slip.total_deduction  # 手取額も再計算
             
             # 勤怠情報
             slip.working_days = len([r for r in payroll_calculation.employee.working_time_records 
@@ -8769,4 +8794,7 @@ def delete_partner(partner_id):
 # --- 起動と初期設定のためのコマンド ---
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    import os
+    port = int(os.environ.get('PORT', 5001))
+    debug = os.environ.get('FLASK_ENV') != 'production'
+    app.run(debug=debug, host='0.0.0.0', port=port)

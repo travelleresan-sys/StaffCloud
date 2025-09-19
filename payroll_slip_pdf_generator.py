@@ -144,14 +144,14 @@ def calculate_absence_deduction(payroll_slip):
     return 0
     
 def format_working_hours(payroll_calculation):
-    """労働時間をフォーマット"""
+    """労働時間をフォーマット - 画面表示と一致させるため時間:分形式に統一"""
     if not payroll_calculation:
-        return "0：00"
-    
+        return "0:00"
+
     total_minutes = (payroll_calculation.regular_working_minutes or 0) + (payroll_calculation.overtime_minutes or 0)
     hours = total_minutes // 60
     minutes = total_minutes % 60
-    return f"{hours}：{minutes:02d}"
+    return f"{hours}:{minutes:02d}"
 
 def draw_umebishi_payroll_format(canvas, font_name, payroll_slip, employee, payroll_calculation, payroll_settings):
     """2列表形式フォーマット"""
@@ -251,16 +251,16 @@ def draw_two_column_table(canvas, font_name, payroll_slip, employee, payroll_cal
         ("賃金計算期間", f"{payroll_slip.slip_month}月 1日～{payroll_slip.slip_month}月 30日"),
         ("労働日数", f"{payroll_slip.working_days}日"),
         ("休業補償日数", f"{payroll_slip.paid_leave_days or 0}日"),
-        ("1ヶ月所定労働時間", f"{160}：00"),
+        ("1ヶ月所定労働時間", f"{160}:00"),
         ("労働時間合計　※休日除く", format_working_hours(payroll_calculation)),
-        ("所定労働時間（1倍）8時間以内", f"{regular_hours}：00"),
-        ("1ヶ月所定労働時間超（1.25倍）", f"{overtime_hours}：00"),
-        ("深夜労働時間（0.25倍）", f"{(payroll_calculation.night_working_minutes // 60) if payroll_calculation and payroll_calculation.night_working_minutes else 0}：{(payroll_calculation.night_working_minutes % 60):02d}" if payroll_calculation and payroll_calculation.night_working_minutes else "0：00"),
-        ("所定時間外労働時間（0.25倍）", f"{(payroll_calculation.legal_overtime_minutes // 60) if payroll_calculation and payroll_calculation.legal_overtime_minutes else 0}：{(payroll_calculation.legal_overtime_minutes % 60):02d}" if payroll_calculation and payroll_calculation.legal_overtime_minutes else "0：00"),
-        ("法定休日労働時間（0.35倍）", f"{(payroll_calculation.legal_holiday_minutes // 60) if payroll_calculation and payroll_calculation.legal_holiday_minutes else 0}：{(payroll_calculation.legal_holiday_minutes % 60):02d}" if payroll_calculation and payroll_calculation.legal_holiday_minutes else "0：00"),
+        ("所定労働時間（1倍）8時間以内", f"{regular_hours}:00"),
+        ("1ヶ月所定労働時間超（1.25倍）", f"{overtime_hours}:00"),
+        ("深夜労働時間（0.25倍）", f"{(payroll_calculation.night_working_minutes // 60) if payroll_calculation and payroll_calculation.night_working_minutes else 0}:{(payroll_calculation.night_working_minutes % 60):02d}" if payroll_calculation and payroll_calculation.night_working_minutes else "0:00"),
+        ("所定時間外労働時間（0.25倍）", f"{(payroll_calculation.legal_overtime_minutes // 60) if payroll_calculation and payroll_calculation.legal_overtime_minutes else 0}:{(payroll_calculation.legal_overtime_minutes % 60):02d}" if payroll_calculation and payroll_calculation.legal_overtime_minutes else "0:00"),
+        ("法定休日労働時間（0.35倍）", f"{(payroll_calculation.legal_holiday_minutes // 60) if payroll_calculation and payroll_calculation.legal_holiday_minutes else 0}:{(payroll_calculation.legal_holiday_minutes % 60):02d}" if payroll_calculation and payroll_calculation.legal_holiday_minutes else "0:00"),
         ("基本給", f"¥{payroll_slip.base_salary:,}"),
         ("1ヶ月所定労働時間超割増", f"¥{payroll_slip.overtime_allowance:,}"),
-        ("深夜労働時間割増", f"¥{payroll_calculation.night_allowance if payroll_calculation and payroll_calculation.night_allowance else 0:,}"),
+        ("深夜労働時間割増", f"¥{payroll_slip.night_allowance:,}"),
         ("所定時間外割増", f"¥{int((payroll_calculation.legal_overtime_minutes / 60 * (payroll_slip.base_salary / 173) * 0.25)) if payroll_calculation and payroll_calculation.legal_overtime_minutes else 0:,}"),
         ("法定休日割増", f"¥{int((payroll_calculation.legal_holiday_minutes / 60 * (payroll_slip.base_salary / 173) * 0.35)) if payroll_calculation and payroll_calculation.legal_holiday_minutes else 0:,}"),
         ("休業補償", f"¥{payroll_slip.temporary_closure_compensation:,}"),
