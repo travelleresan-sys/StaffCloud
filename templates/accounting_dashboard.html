@@ -84,10 +84,15 @@
                                 <div class="card-body text-center">
                                     <i class="bi bi-clock display-1 text-primary mb-3"></i>
                                     <h5 class="card-title">労働時間入力</h5>
-                                    <p class="card-text">月次勤怠入力、労働時間計算</p>
-                                    <a href="{{ url_for('working_time_input') }}" class="btn btn-primary w-100">
-                                        <i class="bi bi-clock-history me-1"></i>入力
-                                    </a>
+                                    <p class="card-text">月次勤怠入力、労働時間計算、タイムカード発行</p>
+                                    <div class="d-grid gap-2">
+                                        <a href="{{ url_for('working_time_input') }}" class="btn btn-primary btn-sm w-100">
+                                            <i class="bi bi-clock-history me-1"></i>労働時間入力
+                                        </a>
+                                        <a href="{{ url_for('timecard_issuance') }}" class="btn btn-outline-primary btn-sm w-100">
+                                            <i class="bi bi-credit-card me-1"></i>タイムカード発行
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>

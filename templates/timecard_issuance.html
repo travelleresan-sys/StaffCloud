@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}タイムカード発行 - StaffCloud{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-credit-card me-2 text-primary"></i>タイムカード発行
+                </h1>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('accounting_dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- メッセージ表示 -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                    <i class="bi bi-info-circle me-2"></i>{{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- タイムカード発行フォーム -->
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-calendar3 me-2"></i>タイムカード発行設定
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('generate_timecard_pdf') }}" target="_blank">
+                        <div class="row g-3">
+                            <!-- 従業員選択 -->
+                            <div class="col-md-6">
+                                <label for="employee_id" class="form-label">
+                                    <i class="bi bi-person me-1"></i>従業員
+                                </label>
+                                <select class="form-select" id="employee_id" name="employee_id" required>
+                                    <option value="">従業員を選択してください</option>
+                                    {% for employee in employees %}
+                                        <option value="{{ employee.employee_id }}">
+                                            {{ employee.employee_id }} - {{ employee.last_name }} {{ employee.first_name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- 年選択 -->
+                            <div class="col-md-3">
+                                <label for="year" class="form-label">
+                                    <i class="bi bi-calendar-year me-1"></i>年
+                                </label>
+                                <select class="form-select" id="year" name="year" required>
+                                    {% for year in years %}
+                                        <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>
+                                            {{ year }}年
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- 月選択 -->
+                            <div class="col-md-3">
+                                <label for="month" class="form-label">
+                                    <i class="bi bi-calendar-month me-1"></i>月
+                                </label>
+                                <select class="form-select" id="month" name="month" required>
+                                    {% for month in months %}
+                                        <option value="{{ month }}" {% if month == current_month %}selected{% endif %}>
+                                            {{ month }}月
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- 発行ボタン -->
+                        <div class="d-grid gap-2 col-md-6 mx-auto">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-file-earmark-pdf me-2"></i>タイムカードPDF発行
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 説明・注意事項 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>タイムカード発行について
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-info">発行内容</h6>
+                            <ul class="list-unstyled small">
+                                <li><i class="bi bi-check-circle text-success me-1"></i>指定月の労働時間データ</li>
+                                <li><i class="bi bi-check-circle text-success me-1"></i>日別出勤時間・退勤時間</li>
+                                <li><i class="bi bi-check-circle text-success me-1"></i>労働時間・休憩時間</li>
+                                <li><i class="bi bi-check-circle text-success me-1"></i>時間外労働・休日労働</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-warning">注意事項</h6>
+                            <ul class="list-unstyled small">
+                                <li><i class="bi bi-exclamation-triangle text-warning me-1"></i>労働時間が入力されていない場合、空白で表示されます</li>
+                                <li><i class="bi bi-exclamation-triangle text-warning me-1"></i>PDFは新しいタブで開かれます</li>
+                                <li><i class="bi bi-exclamation-triangle text-warning me-1"></i>印刷時はA4用紙設定を推奨します</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// フォーム送信前の確認
+document.querySelector('form').addEventListener('submit', function(e) {
+    const employee = document.getElementById('employee_id');
+    const year = document.getElementById('year');
+    const month = document.getElementById('month');
+
+    if (!employee.value || !year.value || !month.value) {
+        e.preventDefault();
+        alert('すべての項目を選択してください。');
+        return false;
+    }
+
+    // 確認メッセージ
+    const employeeName = employee.options[employee.selectedIndex].text;
+    const selectedYear = year.value;
+    const selectedMonth = month.value;
+
+    if (!confirm(`${employeeName}の${selectedYear}年${selectedMonth}月のタイムカードを発行しますか？`)) {
+        e.preventDefault();
+        return false;
+    }
+});
+</script>
+{% endblock %}

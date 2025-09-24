@@ -22,6 +22,7 @@ from models import (db, User, Employee, LeaveCredit, LeaveRecord,
                     PayrollSlip, EmployeePayrollSettings, AccountingAccount, JournalEntry, JournalEntryDetail, GeneralLedger, TransactionPattern, BusinessPartner,
                     AccountingPeriod, OpeningBalance)
 from payroll_slip_pdf_generator import create_payroll_slip_pdf
+from timecard_pdf_generator import create_timecard_pdf
 from datetime import date, datetime, timedelta
 import calendar
 from openpyxl import Workbook
@@ -8790,6 +8791,65 @@ def delete_partner(partner_id):
         flash(f'取引先の削除に失敗しました: {str(e)}')
     
     return redirect(url_for('partner_management'))
+
+# --- タイムカード発行 ---
+
+@app.route('/timecard_issuance')
+@login_required
+def timecard_issuance():
+    """タイムカード発行画面"""
+    if current_user.role != 'accounting':
+        flash('アクセス権限がありません。')
+        return redirect(url_for('index'))
+
+    # 従業員一覧取得
+    employees = Employee.query.filter_by(is_active=True).order_by(Employee.employee_id).all()
+
+    # 年月選択用のデータ
+    current_date = datetime.now()
+    years = list(range(current_date.year - 2, current_date.year + 2))
+    months = list(range(1, 13))
+
+    return render_template('timecard_issuance.html',
+                         employees=employees,
+                         years=years,
+                         months=months,
+                         current_year=current_date.year,
+                         current_month=current_date.month)
+
+@app.route('/generate_timecard_pdf', methods=['POST'])
+@login_required
+def generate_timecard_pdf():
+    """タイムカードPDF生成"""
+    if current_user.role != 'accounting':
+        flash('アクセス権限がありません。')
+        return redirect(url_for('index'))
+
+    try:
+        employee_id = request.form.get('employee_id')
+        year = int(request.form.get('year'))
+        month = int(request.form.get('month'))
+
+        # 従業員情報取得
+        employee = Employee.query.get_or_404(employee_id)
+
+        # 指定月の労働時間データ取得
+        working_time_records = WorkingTimeRecord.query.filter(
+            WorkingTimeRecord.employee_id == employee_id,
+            WorkingTimeRecord.year == year,
+            WorkingTimeRecord.month == month
+        ).order_by(WorkingTimeRecord.day).all()
+
+        # PDFレスポンス生成
+        response = make_response(create_timecard_pdf(employee, working_time_records, year, month))
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename="timecard_{employee.employee_id}_{year}{month:02d}.pdf"'
+
+        return response
+
+    except Exception as e:
+        flash(f'タイムカードの生成に失敗しました: {str(e)}')
+        return redirect(url_for('timecard_issuance'))
 
 # --- 起動と初期設定のためのコマンド ---
 
